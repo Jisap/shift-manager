@@ -2,6 +2,7 @@
 
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,8 +35,15 @@ export function AuthForm() {
           <CardTitle>Sesión iniciada</CardTitle>
           <CardDescription>Tu cuenta está conectada correctamente.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button className="w-full" onClick={() => void signOut()}>
+        <CardContent className="flex flex-col gap-2">
+          <Button asChild className="w-full">
+            <Link href="/shifts">Gestionar turnos</Link>
+          </Button>
+          <Button
+            className="w-full"
+            variant="ghost"
+            onClick={() => void signOut()}
+          >
             Cerrar sesión
           </Button>
         </CardContent>

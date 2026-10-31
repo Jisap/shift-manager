@@ -19,6 +19,9 @@ export default function Home() {
         <Button asChild>
           <Link href="/signin">Entrar</Link>
         </Button>
+        <Button asChild variant="outline">
+          <Link href="/shifts">Gestionar turnos</Link>
+        </Button>
       </div>
 
       <p className="text-sm text-muted-foreground">

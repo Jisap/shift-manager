@@ -34,11 +34,11 @@ Aceptación:
 
 ## Fase 2 — Tipos de turno
 
-- [ ] CRUD de `shiftTypes` (crear, editar, archivar, duplicar).
-- [ ] Formulario con React Hook Form + Zod.
-- [ ] Soporte de intervalos múltiples, pausas y colores.
-- [ ] Validación en Convex y aislamiento por usuario.
-- [ ] Tests unitarios de validadores y E2E del CRUD.
+- [x] CRUD de `shiftTypes` (crear, editar y archivar). Duplicar pendiente.
+- [x] Formulario con React Hook Form + Zod.
+- [x] Soporte de intervalos múltiples, pausas y colores.
+- [x] Validación en Convex y aislamiento por usuario.
+- [ ] Tests unitarios de validadores y E2E del CRUD versionados (smoke manual ya verificado).
 
 Aceptación: el usuario gestiona sus turnos, incluidos nocturnos y partidos.
 
