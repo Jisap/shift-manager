@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import {
   defaultShiftType,
   shiftTypeSchema,
+  totalBreakMinutes,
   type ShiftTypeInput,
 } from "@/lib/validators/shift";
 
@@ -37,6 +38,7 @@ export function ShiftTypesManager() {
     defaultValues: defaultShiftType,
   });
   const intervals = useFieldArray({ control: form.control, name: "intervals" });
+  const breaks = useFieldArray({ control: form.control, name: "breaks" });
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Cargando…</p>;
@@ -64,6 +66,7 @@ export function ShiftTypesManager() {
     setError(null);
     const payload = {
       ...values,
+      breakMinutes: totalBreakMinutes(values.breaks),
       description: values.description?.trim() ? values.description.trim() : undefined,
     };
     try {
@@ -87,7 +90,7 @@ export function ShiftTypesManager() {
       color: shift.color,
       description: shift.description ?? "",
       intervals: shift.intervals,
-      breakMinutes: shift.breakMinutes,
+      breaks: shift.breaks ?? [],
       breakPaid: shift.breakPaid,
     });
   }
@@ -170,20 +173,47 @@ export function ShiftTypesManager() {
               ))}
             </div>
 
-            <div className="grid grid-cols-2 items-end gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="breakMinutes">Pausa (min)</Label>
-                <Input
-                  id="breakMinutes"
-                  type="number"
-                  min={0}
-                  max={480}
-                  {...form.register("breakMinutes", { valueAsNumber: true })}
-                />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Descansos</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => breaks.append({ start: "13:00", end: "14:00" })}
+                  disabled={breaks.fields.length >= 3}
+                >
+                  Añadir descanso
+                </Button>
               </div>
+              {breaks.fields.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sin descansos.</p>
+              ) : null}
+              {breaks.fields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    aria-label={`Inicio del descanso ${index + 1}`}
+                    {...form.register(`breaks.${index}.start`)}
+                  />
+                  <Input
+                    type="time"
+                    aria-label={`Fin del descanso ${index + 1}`}
+                    {...form.register(`breaks.${index}.end`)}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => breaks.remove(index)}
+                  >
+                    Quitar
+                  </Button>
+                </div>
+              ))}
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" {...form.register("breakPaid")} />
-                Pausa remunerada
+                Descanso remunerado
               </label>
             </div>
 
@@ -246,8 +276,14 @@ export function ShiftTypesManager() {
                     .join(" · ")}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Pausa: {shift.breakMinutes} min
-                  {shift.breakPaid ? " (remunerada)" : ""}
+                  {shift.breaks && shift.breaks.length > 0
+                    ? `Descansos: ${shift.breaks
+                        .map((rest) => `${rest.start}–${rest.end}`)
+                        .join(" · ")} (${shift.breakMinutes} min)`
+                    : "Sin descansos"}
+                  {shift.breakPaid && shift.breakMinutes > 0
+                    ? " · remunerado"
+                    : ""}
                 </p>
                 <div className="flex gap-2">
                   <Button

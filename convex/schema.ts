@@ -32,6 +32,7 @@ export default defineSchema({
     color: v.string(),
     description: v.optional(v.string()),
     intervals: v.array(localInterval),
+    breaks: v.optional(v.array(localInterval)),
     breakMinutes: v.number(),
     breakPaid: v.boolean(),
     archivedAt: v.optional(v.number()),

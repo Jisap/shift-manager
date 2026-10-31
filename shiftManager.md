@@ -1,7 +1,7 @@
 # ShiftManager
 ## Guía de producto, arquitectura y desarrollo para agentes de IA
 
-**Versión:** 1.3  
+**Versión:** 1.4  
 **Estado:** Especificación ejecutable; decisiones técnicas cerradas  
 **Objetivo:** Construir una aplicación web para gestionar turnos laborales, horarios, jornadas, horas trabajadas y estadísticas personales.
 
@@ -879,7 +879,10 @@ shiftTypes: defineTable({
       end: v.string(),   // HH:mm local; si end <= start cruza medianoche
     })
   ),
-  breakMinutes: v.number(), // pausas dentro de los intervalos
+  breaks: v.optional(
+    v.array(v.object({ start: v.string(), end: v.string() }))
+  ), // descansos con hora de inicio y fin
+  breakMinutes: v.number(), // suma calculada por el backend
   breakPaid: v.boolean(),
   archivedAt: v.optional(v.number()),
   updatedAt: v.number(),
@@ -892,6 +895,7 @@ Reglas:
 
 - Una jornada partida se modela con varios intervalos. El hueco entre intervalos no cuenta como trabajo.
 - `isOvernight` no se almacena: se deriva de si algún intervalo tiene `end <= start`.
+- Los descansos se definen con hora de inicio y fin en `breaks`; `breakMinutes` es su suma y la calcula el backend.
 - `breakPaid = true` mantiene la pausa dentro de las horas computadas; `false` la descuenta.
 - Los turnos en uso no se borran: se archivan con `archivedAt`.
 
@@ -1884,6 +1888,12 @@ Cualquier modificación debe documentarse y justificarse.
 - Definida la ubicación `docs/sessions/` y el índice `docs/SESSION_LOG.md`.
 - Añadida la plantilla de sesión y la regla de leer el último registro antes de empezar.
 - Incorporados ambos al listado de documentación mínima.
+
+## Versión 1.4
+
+- Los descansos pasan de minutos sueltos a intervalos con hora de inicio y fin (`breaks`).
+- `breakMinutes` se conserva como suma calculada por el backend para no romper el motor.
+- Actualizados el esquema, los validadores y la interfaz de gestión de turnos.
 
 ---
 

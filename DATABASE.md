@@ -41,6 +41,7 @@ Las tablas de autenticación las define `@convex-dev/auth` (usuarios, sesiones, 
   color: v.string(),
   description: v.optional(v.string()),
   intervals: v.array(v.object({ start: v.string(), end: v.string() })),
+  breaks: v.optional(v.array(v.object({ start: v.string(), end: v.string() }))),
   breakMinutes: v.number(),
   breakPaid: v.boolean(),
   archivedAt: v.optional(v.number()),
@@ -51,6 +52,7 @@ Las tablas de autenticación las define `@convex-dev/auth` (usuarios, sesiones, 
 Índices: `by_user(userId)`, `by_user_archived(userId, archivedAt)`.
 
 - Varios intervalos modelan jornadas partidas; el hueco entre ellos no es trabajo.
+- `breaks` guarda los descansos con hora de inicio y fin; `breakMinutes` es su suma y la calcula el backend.
 - `isOvernight` se deriva (`end <= start`), no se almacena.
 - `archivedAt` en lugar de borrado físico si está en uso.
 

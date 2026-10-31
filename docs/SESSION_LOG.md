@@ -9,3 +9,4 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-10-31 17:22 | opencode (deepseek-v4.1)   | Documentación derivada y Fase 1: scaffold Next.js 16, Convex, tests y CI  | [sessions/2026-10-31-1722-opencode.md](sessions/2026-10-31-1722-opencode.md) |
 | 2026-10-31 17:55 | opencode (deepseek-v4.1)   | Despliegue de Convex e integración de Convex Auth (email + contraseña)    | [sessions/2026-10-31-1755-opencode.md](sessions/2026-10-31-1755-opencode.md) |
 | 2026-10-31 18:16 | opencode (deepseek-v4.1)   | Fase 2: CRUD de tipos de turno (Convex + formulario + verificación E2E)   | [sessions/2026-10-31-1816-opencode.md](sessions/2026-10-31-1816-opencode.md) |
+| 2026-10-31 18:30 | opencode (deepseek-v4.1)   | Descansos con hora de inicio/fin (`breaks`) y total calculado en backend | [sessions/2026-10-31-1816-opencode.md](sessions/2026-10-31-1816-opencode.md) |

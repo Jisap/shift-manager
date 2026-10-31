@@ -27,21 +27,34 @@ export const shiftTypeSchema = z.object({
     .array(shiftIntervalSchema)
     .min(1, "Añade al menos un intervalo")
     .max(4, "Máximo 4 intervalos"),
-  breakMinutes: z
-    .number()
-    .int("Debe ser un número entero")
-    .min(0, "No puede ser negativo")
-    .max(480, "Máximo 480 minutos"),
+  breaks: z.array(shiftIntervalSchema).max(3, "Máximo 3 descansos"),
   breakPaid: z.boolean(),
 });
 
 export type ShiftTypeInput = z.infer<typeof shiftTypeSchema>;
+
+export function minutesBetween(start: string, end: string): number {
+  const [startHours, startMinutes] = start.split(":").map(Number);
+  const [endHours, endMinutes] = end.split(":").map(Number);
+  const difference =
+    endHours * 60 + endMinutes - (startHours * 60 + startMinutes);
+  return difference >= 0 ? difference : difference + 24 * 60;
+}
+
+export function totalBreakMinutes(
+  breaks: { start: string; end: string }[],
+): number {
+  return breaks.reduce(
+    (total, current) => total + minutesBetween(current.start, current.end),
+    0,
+  );
+}
 
 export const defaultShiftType: ShiftTypeInput = {
   name: "",
   color: "#2563eb",
   description: "",
   intervals: [{ start: "08:00", end: "16:00" }],
-  breakMinutes: 0,
+  breaks: [],
   breakPaid: false,
 };
