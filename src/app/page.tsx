@@ -10,7 +10,7 @@ export default function Home() {
         Tus turnos, claros y bajo control
       </h1>
 
-      <p className="max-w-xl text-lg text-secondary">
+      <p className="max-w-xl text-lg text-muted-foreground">
         Organiza turnos rotativos, consulta tu calendario y compara las horas
         previstas con las trabajadas. El proyecto está en fase de preparación.
       </p>
@@ -21,7 +21,7 @@ export default function Home() {
         </Button>
       </div>
 
-      <p className="text-sm text-secondary">
+      <p className="text-sm text-muted-foreground">
         Fase 1: entorno y autenticación. Siguiente: calendario.
       </p>
     </main>
