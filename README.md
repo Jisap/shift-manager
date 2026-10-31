@@ -6,7 +6,7 @@ Sustituye calendarios improvisados y hojas de cálculo por una vista clara del h
 
 ## Estado
 
-**Fase 1 — preparación.** Proyecto Next.js 16 creado con Tailwind CSS v4, esquema de Convex, Vitest y Playwright. Pendientes: integrar Convex Auth, inicializar shadcn/ui y el CI. La especificación está cerrada en `shiftManager.md` (v1.3).
+**Fase 1 — preparación.** Proyecto Next.js 16 con Tailwind CSS v4, shadcn/ui, esquema Convex desplegado, Convex Auth operativo, Vitest y Playwright. Pendiente: CI. La especificación está cerrada en `shiftManager.md` (v1.3).
 
 ## Documentación
 

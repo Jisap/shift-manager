@@ -17,9 +17,9 @@ Objetivo: proyecto inicial funcional y verificable.
 Tareas:
 
 - [x] Crear proyecto Next.js 16 con App Router y TypeScript estricto.
-- [x] Configurar Tailwind CSS v4 (CSS-first). shadcn/ui pendiente.
-- [x] Crear `convex/schema.ts` con las tablas de `DATABASE.md`. Despliegue pendiente.
-- [ ] Integrar Convex Auth (email + contraseña).
+- [x] Configurar Tailwind CSS v4 (CSS-first) e inicializar shadcn/ui (preset Nova con Radix).
+- [x] Crear `convex/schema.ts` con las tablas de `DATABASE.md` y desplegarlo.
+- [x] Integrar Convex Auth (email + contraseña) con `Password` provider.
 - [x] Configurar ESLint y Prettier. Husky y lint-staged pendientes (requieren git).
 - [x] Configurar Vitest y Playwright.
 - [x] Definir scripts `dev`, `lint`, `typecheck`, `test`, `test:e2e` y documentarlos en `AGENTS.md`.
