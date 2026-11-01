@@ -426,6 +426,13 @@ export const update = mutation({
     }
 
     const normalized = validatePattern(args);
+    if (normalized.startDate <= today) {
+      throw new ConvexError({
+        code: "CONFLICT",
+        message:
+          "La nueva fecha de inicio debe ser futura para no reescribir el historial",
+      });
+    }
     const days = await validateShiftOwnership(ctx, userId, args.days);
     await assertNoOverlap(
       ctx,

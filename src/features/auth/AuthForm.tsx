@@ -25,7 +25,7 @@ export function AuthForm() {
   const [pending, setPending] = useState(false);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Cargando…</p>;
+    return <p className="text-muted-foreground text-sm">Cargando…</p>;
   }
 
   if (isAuthenticated) {
@@ -33,11 +33,19 @@ export function AuthForm() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Sesión iniciada</CardTitle>
-          <CardDescription>Tu cuenta está conectada correctamente.</CardDescription>
+          <CardDescription>
+            Tu cuenta está conectada correctamente.
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <Button asChild className="w-full">
             <Link href="/shifts">Gestionar turnos</Link>
+          </Button>
+          <Button asChild className="w-full" variant="outline">
+            <Link href="/patterns">Gestionar patrones</Link>
+          </Button>
+          <Button asChild className="w-full" variant="outline">
+            <Link href="/calendar">Ver calendario</Link>
           </Button>
           <Button
             className="w-full"
@@ -69,7 +77,9 @@ export function AuthForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>{flow === "signIn" ? "Iniciar sesión" : "Crear cuenta"}</CardTitle>
+        <CardTitle>
+          {flow === "signIn" ? "Iniciar sesión" : "Crear cuenta"}
+        </CardTitle>
         <CardDescription>
           {flow === "signIn"
             ? "Accede con tu email y contraseña."
@@ -95,13 +105,15 @@ export function AuthForm() {
               id="password"
               name="password"
               type="password"
-              autoComplete={flow === "signIn" ? "current-password" : "new-password"}
+              autoComplete={
+                flow === "signIn" ? "current-password" : "new-password"
+              }
               minLength={8}
               required
             />
           </div>
           {error ? (
-            <p className="text-sm text-destructive" role="alert">
+            <p className="text-destructive text-sm" role="alert">
               {error}
             </p>
           ) : null}
@@ -121,9 +133,7 @@ export function AuthForm() {
               setError(null);
             }}
           >
-            {flow === "signIn"
-              ? "No tengo cuenta"
-              : "Ya tengo cuenta"}
+            {flow === "signIn" ? "No tengo cuenta" : "Ya tengo cuenta"}
           </Button>
         </form>
       </CardContent>
