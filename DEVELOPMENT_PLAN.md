@@ -1,6 +1,6 @@
 # Plan de desarrollo — ShiftManager
 
-Fases ejecutables derivadas de `shiftManager.md` (v1.3). Cada fase termina con verificación y registro de sesión.
+Fases ejecutables derivadas de `shiftManager.md` (v1.6). Cada fase termina con verificación y registro de sesión.
 
 ## Fase 0 — Documentación y decisiones
 
@@ -44,23 +44,24 @@ Aceptación: el usuario gestiona sus turnos, incluidos nocturnos y partidos.
 
 ## Fase 3 — Patrones y motor
 
-- [ ] Crear y editar patrones semanales y rotativos (backend Convex listo; falta UI).
-- [ ] Editor visual de `patternDays`.
+- [x] Crear y editar patrones semanales y rotativos.
+- [x] Editor visual de `patternDays`.
 - [x] Implementar `src/lib/engine` con el contrato de `shiftManager.md` §5.21.
 - [x] `resolveDay` y `resolveRange` con zona horaria y DST.
-- [ ] Cambio de patrón sin reescribir historial (motor y backend listos; falta UI).
-- [ ] Tests de los 24 casos de §12.1 (23 cubiertos en el motor; el caso 19 depende del backend).
+- [x] Cambio de patrón sin reescribir historial (archivar + crear nuevo).
+- [ ] Tests de los 24 casos de §12.1 (23 en el motor; caso 19 implementado en backend sin test automatizado).
 
 Aceptación: dado un patrón y un rango, el motor resuelve todas las jornadas correctamente.
 
 ## Fase 4 — Calendario
 
-- [ ] Vista mensual y semanal.
+- [x] Vista mensual.
+- [ ] Vista semanal.
 - [ ] Vista diaria y agenda.
-- [ ] Colores por turno, descansos y festivos.
+- [ ] Colores por turno, descansos y festivos (turnos y descansos listos; festivos pendientes).
 - [ ] Excepciones puntuales (`scheduleOverrides`) desde el calendario.
-- [ ] Navegación entre meses y años.
-- [ ] Responsive y accesible.
+- [ ] Navegación entre meses y años (meses listos; selector de año pendiente).
+- [ ] Revisión responsive y de accesibilidad.
 
 Aceptación: calendario legible y editable; una excepción por fecha.
 
