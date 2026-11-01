@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
+/** Convierte minutos en texto legible: `"2 h"`, `"1 h 30 min"`, etc. */
 function formatHours(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
@@ -38,6 +39,8 @@ export function CalendarView() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
 
+  // El grid de la vista mensual necesita días de la semana anterior/siguiente
+  // para completar filas completas (lunes como primer día de semana).
   const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
   const gridEnd = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
   const startDate = format(gridStart, "yyyy-MM-dd");
@@ -52,6 +55,8 @@ export function CalendarView() {
   );
   const shifts = useQuery(api.shiftTypes.list, isAuthenticated ? {} : "skip");
 
+  // Los datos de Convex llegan como arrays; los convertimos a Map para
+  // acceso O(1) por id/fecha en el render del grid.
   const shiftsById = useMemo(
     () =>
       new Map((shifts ?? []).map((shift) => [String(shift._id), shift])),
@@ -61,6 +66,8 @@ export function CalendarView() {
     () => new Map((calendar?.days ?? []).map((day) => [day.date, day])),
     [calendar],
   );
+  // Total de minutos planificados en el mes (excluye los días fuera del mes
+  // que aparecen en el grid para completar semanas).
   const monthMinutes = (calendar?.days ?? [])
     .filter((day) => day.date >= monthStart && day.date <= monthEnd)
     .reduce((total, day) => total + day.plannedMinutes, 0);

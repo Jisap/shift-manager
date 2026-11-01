@@ -30,6 +30,11 @@ import {
 const selectClassName =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
+/**
+ * Extrae el mensaje de error legible de una excepción lanzada por Convex.
+ * Convex serializa los errores con `ConvexError` como `{ data: { message } }`.
+ * Si la estructura no coincide, devuelve el texto de `fallback`.
+ */
 function errorMessage(error: unknown, fallback: string): string {
   if (error === null || typeof error !== "object" || !("data" in error)) {
     return fallback;
@@ -73,6 +78,8 @@ export function PatternsManager() {
   );
 
   useEffect(() => {
+    // Sincroniza el tamaño del array `days` cuando cambia `type` o `cycleLength`.
+    // Si el ciclo crece, añade días de descanso al final; si reduce, los recorta.
     const target = type === "weekly" ? 7 : cycleLength;
     const current = form.getValues("days");
     if (!Number.isFinite(target) || target < 1 || current.length === target) {
@@ -114,12 +121,18 @@ export function PatternsManager() {
     );
   }
 
+  /** Limpia el formulario y cancela la edición activa. */
   function resetForm() {
     setEditingId(null);
     setError(null);
     form.reset(defaultPatternValues());
   }
 
+  /**
+   * Al cambiar de tipo (semanal ↔ rotativo):
+   * - Fuerza `cycleLength = 7` en patrones semanales.
+   * - Si la `anchorDate` actual no es lunes, la reemplaza por el próximo lunes.
+   */
   function handleTypeChange(nextType: "weekly" | "rotating") {
     form.setValue("type", nextType, { shouldValidate: true });
     if (nextType === "weekly") {
@@ -132,6 +145,10 @@ export function PatternsManager() {
     }
   }
 
+  /**
+   * Actualiza el turno asignado a un día del ciclo en el estado del formulario.
+   * El valor `"__rest"` indica descanso y limpia el `shiftTypeId`.
+   */
   function updateDay(index: number, value: string) {
     const current = form.getValues("days");
     const next = current.map((day, dayIndex) => {
@@ -149,6 +166,10 @@ export function PatternsManager() {
     });
   }
 
+  /**
+   * Envía el formulario al backend (creación o edición según `editingId`).
+   * Normaliza `endDate` vacío a `undefined` para el contrato de la API.
+   */
   async function onSubmit(values: PatternFormValues) {
     setError(null);
     const payload = {
@@ -180,6 +201,7 @@ export function PatternsManager() {
     }
   }
 
+  /** Carga los datos del patrón seleccionado en el formulario para editarlo. */
   function startEditing(pattern: NonNullable<typeof patterns>[number]) {
     setEditingId(pattern._id);
     setError(null);
@@ -198,6 +220,7 @@ export function PatternsManager() {
     });
   }
 
+  /** Envía el renombrado de un patrón y cierra el modo renombrar al terminar. */
   async function submitRename(id: Id<"shiftPatterns">) {
     setError(null);
     try {
@@ -209,6 +232,10 @@ export function PatternsManager() {
     }
   }
 
+  /**
+   * Archiva un patrón. Si el patrón archivado era el que se estaba editando,
+   * cancela la edición para evitar un estado inconsistente.
+   */
   async function archive(id: Id<"shiftPatterns">) {
     setError(null);
     try {

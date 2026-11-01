@@ -1,16 +1,27 @@
 import { z } from "zod";
 import { weekdayOf } from "@/lib/dates/local-date";
 
+/** Refinamiento base para un string en formato `YYYY-MM-DD`. */
 const localDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Usa el formato YYYY-MM-DD");
 
+/** Forma de un único día del ciclo dentro del formulario. */
 export const patternDaySchema = z.object({
   dayIndex: z.number().int().min(0),
   isRestDay: z.boolean(),
   shiftTypeId: z.string().optional(),
 });
 
+/**
+ * Schema Zod del formulario de creación/edición de un patrón.
+ *
+ * Validaciones cruzadas (superRefine):
+ * - Patrones semanales deben tener exactamente 7 días y `anchorDate` en lunes.
+ * - `endDate`, si se proporciona, no puede ser anterior a `startDate`.
+ * - El array `days` debe tener exactamente `cycleLength` entradas ordenadas y sin duplicados.
+ * - Los días que no son descanso deben tener `shiftTypeId`.
+ */
 export const patternFormSchema = z
   .object({
     name: z
@@ -26,6 +37,7 @@ export const patternFormSchema = z
       .max(365, "Máximo 365 días"),
     anchorDate: localDate,
     startDate: localDate,
+    /** Campo vacío (`""`) representa "sin fecha de fin". */
     endDate: z.union([localDate, z.literal("")]),
     days: z.array(patternDaySchema).min(1).max(365),
   })
@@ -98,10 +110,18 @@ const WEEKDAY_NAMES = [
   "Sábado",
 ];
 
+/**
+ * Devuelve el nombre del día de la semana para un índice de patrón semanal.
+ * El índice 0 = Lunes (el ciclo empieza el lunes), por lo que se desplaza +1 mod 7.
+ */
 export function weekdayLabel(dayIndex: number): string {
   return WEEKDAY_NAMES[(dayIndex + 1) % 7] ?? `Día ${dayIndex + 1}`;
 }
 
+/**
+ * Devuelve el próximo lunes como `YYYY-MM-DD` en hora local del navegador.
+ * Si hoy ya es lunes, devuelve hoy mismo.
+ */
 export function nextMondayLocalDate(): string {
   const date = new Date();
   const day = date.getDay();
@@ -110,10 +130,12 @@ export function nextMondayLocalDate(): string {
   return formatLocalDateInput(date);
 }
 
+/** Devuelve la fecha de hoy como `YYYY-MM-DD` en hora local del navegador. */
 export function todayLocalDate(): string {
   return formatLocalDateInput(new Date());
 }
 
+/** Formatea un Date a `YYYY-MM-DD` usando los componentes locales del navegador. */
 function formatLocalDateInput(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -121,6 +143,10 @@ function formatLocalDateInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Valores iniciales del formulario de patrón:
+ * tipo semanal, ancla en el próximo lunes, inicio hoy, sin fin, 7 días de descanso.
+ */
 export function defaultPatternValues(): PatternFormValues {
   return {
     name: "",
@@ -137,6 +163,7 @@ export function defaultPatternValues(): PatternFormValues {
   };
 }
 
+/** Etiquetas abreviadas Lun–Dom para el formulario semanal (índice 0 = Lunes). */
 export const WEEKLY_DAY_LABELS = [
   "Lun",
   "Mar",
