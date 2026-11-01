@@ -1,7 +1,7 @@
 # ShiftManager
 ## Guía de producto, arquitectura y desarrollo para agentes de IA
 
-**Versión:** 1.4  
+**Versión:** 1.5  
 **Estado:** Especificación ejecutable; decisiones técnicas cerradas  
 **Objetivo:** Construir una aplicación web para gestionar turnos laborales, horarios, jornadas, horas trabajadas y estadísticas personales.
 
@@ -693,6 +693,37 @@ export interface ShiftInterval {
   end: LocalTime; // si end <= start, cruza medianoche
 }
 
+export interface ShiftTypeDefinition {
+  id: string;
+  intervals: ShiftInterval[];
+  breaks?: ShiftInterval[];
+  breakPaid?: boolean;
+}
+
+export interface PatternDefinition {
+  id: string;
+  type: "weekly" | "rotating";
+  cycleLength: number;
+  anchorDate: LocalDate;
+  startDate: LocalDate;
+  endDate?: LocalDate;
+  archivedAt?: number;
+}
+
+export interface PatternDayDefinition {
+  patternId: string;
+  dayIndex: number;
+  isRestDay: boolean;
+  shiftTypeId?: string;
+}
+
+export interface OverrideDefinition {
+  date: LocalDate;
+  kind: "shift" | "rest" | "extra";
+  shiftTypeId?: string;
+  intervals?: ShiftInterval[];
+}
+
 export interface ResolvedDay {
   date: LocalDate;
   kind: "shift" | "rest";
@@ -707,9 +738,20 @@ export interface ResolvedDay {
 export interface EngineInput {
   timezone: string;
   date: LocalDate;
+  shiftTypes: Record<string, ShiftTypeDefinition>;
   pattern?: PatternDefinition;
   patternDays?: PatternDayDefinition[];
   override?: OverrideDefinition;
+}
+
+export interface EngineRangeInput {
+  timezone: string;
+  startDate: LocalDate;
+  endDate: LocalDate;
+  shiftTypes: Record<string, ShiftTypeDefinition>;
+  patterns?: PatternDefinition[];
+  patternDays?: PatternDayDefinition[];
+  overrides?: OverrideDefinition[];
 }
 
 export function resolveDay(input: EngineInput): ResolvedDay;
@@ -719,7 +761,11 @@ export function resolveRange(input: EngineRangeInput): ResolvedDay[];
 Reglas del contrato:
 
 - `resolveDay` es determinista y no accede a la base de datos.
-- Las queries de Convex cargan los datos y llaman al motor.
+- `resolveRange` recorre días de calendario en la zona del usuario y aplica la misma prioridad: excepción, patrón activo y descanso por defecto.
+- Si hay varios patrones que cubren una fecha, gana el de `startDate` más reciente; el backend impide solapamientos activos.
+- Las queries de Convex cargan los datos y llaman al motor; los turnos se pasan ya indexados por `id`.
+- `plannedMinutes` se obtiene de los instantes reales de los intervalos, descontando los descansos no remunerados que caen dentro de la jornada. Así un turno nocturno puede durar 7 o 9 horas en los cambios de horario.
+- Los descansos se ubican en el día del turno o en el siguiente si cruzan medianoche.
 - El calendario y las estadísticas consumen `ResolvedDay[]`.
 - Cualquier cambio de firma debe actualizar este documento y sus pruebas.
 
@@ -1894,6 +1940,12 @@ Cualquier modificación debe documentarse y justificarse.
 - Los descansos pasan de minutos sueltos a intervalos con hora de inicio y fin (`breaks`).
 - `breakMinutes` se conserva como suma calculada por el backend para no romper el motor.
 - Actualizados el esquema, los validadores y la interfaz de gestión de turnos.
+
+## Versión 1.5
+
+- Implementado el motor puro en `src/lib/engine` (`resolveDay` y `resolveRange`).
+- Ampliado el contrato de §5.21 con `shiftTypes`, patrones, días de patrón y excepciones tipadas.
+- `plannedMinutes` se calcula con instantes reales y descuenta pausas no remuneradas, incluidos nocturnos y DST.
 
 ---
 

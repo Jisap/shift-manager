@@ -46,10 +46,10 @@ Aceptación: el usuario gestiona sus turnos, incluidos nocturnos y partidos.
 
 - [ ] Crear y editar patrones semanales y rotativos.
 - [ ] Editor visual de `patternDays`.
-- [ ] Implementar `src/lib/engine` con el contrato de `shiftManager.md` §5.21.
-- [ ] `resolveDay` y `resolveRange` con zona horaria y DST.
-- [ ] Cambio de patrón sin reescribir historial.
-- [ ] Tests de los 24 casos de §12.1.
+- [x] Implementar `src/lib/engine` con el contrato de `shiftManager.md` §5.21.
+- [x] `resolveDay` y `resolveRange` con zona horaria y DST.
+- [ ] Cambio de patrón sin reescribir historial (motor listo; falta UI y CRUD).
+- [ ] Tests de los 24 casos de §12.1 (23 cubiertos en el motor; el caso 19 depende del backend).
 
 Aceptación: dado un patrón y un rango, el motor resuelve todas las jornadas correctamente.
 
