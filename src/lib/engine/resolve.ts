@@ -30,6 +30,10 @@ export class EngineError extends Error {
   }
 }
 
+/**
+ * Ordena patrones por fecha de inicio descendente (el más reciente tiene prioridad).
+ * En caso de empate, desempata alfabéticamente por su ID.
+ */
 function byStartDateDescending(
   left: PatternDefinition,
   right: PatternDefinition,
@@ -40,6 +44,10 @@ function byStartDateDescending(
   return left.startDate < right.startDate ? 1 : -1;
 }
 
+/**
+ * Encuentra el patrón no archivado aplicable para una fecha dada.
+ * Si varios coinciden, selecciona el que tenga la fecha de inicio más reciente.
+ */
 function activePatternFor(
   patterns: PatternDefinition[],
   date: LocalDate,
@@ -52,6 +60,9 @@ function activePatternFor(
     .sort(byStartDateDescending)[0];
 }
 
+/**
+ * Genera el objeto ResolvedDay representativo de un día de descanso sin horas planificadas.
+ */
 function restDay(date: LocalDate, source: ResolvedDay["source"]): ResolvedDay {
   return {
     date,
@@ -62,6 +73,10 @@ function restDay(date: LocalDate, source: ResolvedDay["source"]): ResolvedDay {
   };
 }
 
+/**
+ * Convierte un intervalo local (ej. "22:00" a "06:00") a instantes absolutos en epoch ms.
+ * Si la hora de fin es menor o igual a la de inicio, asume que cruza medianoche y pasa al día siguiente.
+ */
 function intervalToInstants(
   date: LocalDate,
   interval: ShiftInterval,
@@ -81,6 +96,9 @@ function intervalToInstants(
   return { start, end };
 }
 
+/**
+ * Calcula los milisegundos de solapamiento entre dos intervalos de tiempo absolutos.
+ */
 function overlapMilliseconds(
   left: InstantInterval,
   right: InstantInterval,
@@ -91,6 +109,10 @@ function overlapMilliseconds(
   );
 }
 
+/**
+ * Calcula los minutos de pausas no remuneradas que efectivamente caen dentro
+ * de los intervalos de trabajo del turno.
+ */
 function unpaidBreakMinutes(
   date: LocalDate,
   breaks: ShiftInterval[],
@@ -115,6 +137,10 @@ function unpaidBreakMinutes(
   return total / MILLISECONDS_PER_MINUTE;
 }
 
+/**
+ * Construye el objeto ResolvedDay para una jornada de trabajo activa:
+ * calcula instantes de inicio/fin, minutos brutos y descuenta pausas no remuneradas.
+ */
 function buildShift(
   date: LocalDate,
   timezone: string,
@@ -163,6 +189,10 @@ function buildShift(
   };
 }
 
+/**
+ * Obtiene los intervalos de trabajo para una excepción.
+ * Prioriza los intervalos explícitos del override; si no los hay, usa los del tipo de turno referenciado.
+ */
 function intervalsForOverride(
   override: OverrideDefinition,
   shiftTypes: Record<string, ShiftTypeDefinition>,
@@ -185,6 +215,10 @@ function intervalsForOverride(
   return { intervals: shiftType.intervals, shiftType };
 }
 
+/**
+ * Resuelve una jornada gobernada por una excepción (override),
+ * ya sea de descanso forzado o de turno específico/personalizado.
+ */
 function resolveOverride(
   date: LocalDate,
   timezone: string,
@@ -206,6 +240,10 @@ function resolveOverride(
   );
 }
 
+/**
+ * Resuelve una jornada según la definición del patrón y el índice cíclico del día.
+ * Si el patrón no cubre la fecha o marca descanso, devuelve restDay.
+ */
 function resolvePatternDay(
   date: LocalDate,
   timezone: string,
@@ -249,6 +287,12 @@ function resolvePatternDay(
   );
 }
 
+/**
+ * Resuelve el estado y horarios de un único día según la jerarquía del motor:
+ * 1. Excepción (override) si existe.
+ * 2. Patrón de turnos activo si cubre la fecha.
+ * 3. Descanso por defecto en ausencia de reglas.
+ */
 export function resolveDay(input: EngineInput): ResolvedDay {
   const { date, timezone, shiftTypes, pattern, patternDays, override } = input;
 
@@ -269,6 +313,10 @@ export function resolveDay(input: EngineInput): ResolvedDay {
   return restDay(date, "default");
 }
 
+/**
+ * Resuelve en memoria todos los días comprendidos en un rango de fechas [startDate, endDate].
+ * Itera fecha a fecha aplicando la jerarquía de resolución (excepciones > patrón activo > descanso).
+ */
 export function resolveRange(input: EngineRangeInput): ResolvedDay[] {
   const {
     timezone,
