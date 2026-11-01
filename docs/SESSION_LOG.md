@@ -11,3 +11,4 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-10-31 18:16 | opencode (deepseek-v4.1)   | Fase 2: CRUD de tipos de turno (Convex + formulario + verificación E2E)   | [sessions/2026-10-31-1816-opencode.md](sessions/2026-10-31-1816-opencode.md) |
 | 2026-10-31 18:30 | opencode (deepseek-v4.1)   | Descansos con hora de inicio/fin (`breaks`) y total calculado en backend | [sessions/2026-10-31-1816-opencode.md](sessions/2026-10-31-1816-opencode.md) |
 | 2026-11-01 11:19 | opencode (deepseek-v4.1)   | Motor puro de turnos con patrones, excepciones, pausas y DST + 26 tests | [sessions/2026-11-01-1119-opencode.md](sessions/2026-11-01-1119-opencode.md) |
+| 2026-11-01 11:32 | opencode (deepseek-v4.1)   | Backend Convex de patrones, excepciones y calendario + 8 tests de fechas | [sessions/2026-11-01-1132-opencode.md](sessions/2026-11-01-1132-opencode.md) |

@@ -294,6 +294,32 @@ describe("patrones", () => {
     expect(resolveWithWeekly("2024-01-07").kind).toBe("rest");
   });
 
+  it("21b. conserva el histórico de un patrón archivado", () => {
+    const archived: PatternDefinition = {
+      ...weekly,
+      id: "archived",
+      endDate: "2024-01-03",
+      archivedAt: 1_700_000_000_000,
+    };
+    const days: PatternDayDefinition[] = weeklyDays.map((day) => ({
+      ...day,
+      patternId: "archived",
+    }));
+
+    const result = resolveRange({
+      timezone,
+      startDate: "2024-01-01",
+      endDate: "2024-01-04",
+      shiftTypes,
+      patterns: [archived],
+      patternDays: days,
+    });
+
+    expect(result[0]?.shiftTypeId).toBe("morning");
+    expect(result[2]?.shiftTypeId).toBe("night");
+    expect(result[3]).toMatchObject({ kind: "rest", source: "default" });
+  });
+
   it("9 y 21. cambia de patrón sin reescribir el historial", () => {
     const oldPattern: PatternDefinition = {
       id: "old",

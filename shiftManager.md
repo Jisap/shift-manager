@@ -1,7 +1,7 @@
 # ShiftManager
 ## Guía de producto, arquitectura y desarrollo para agentes de IA
 
-**Versión:** 1.5  
+**Versión:** 1.6  
 **Estado:** Especificación ejecutable; decisiones técnicas cerradas  
 **Objetivo:** Construir una aplicación web para gestionar turnos laborales, horarios, jornadas, horas trabajadas y estadísticas personales.
 
@@ -763,6 +763,7 @@ Reglas del contrato:
 - `resolveDay` es determinista y no accede a la base de datos.
 - `resolveRange` recorre días de calendario en la zona del usuario y aplica la misma prioridad: excepción, patrón activo y descanso por defecto.
 - Si hay varios patrones que cubren una fecha, gana el de `startDate` más reciente; el backend impide solapamientos activos.
+- Los patrones archivados se siguen resolviendo si su `endDate` cubre la fecha: archivar no debe borrar el histórico.
 - Las queries de Convex cargan los datos y llaman al motor; los turnos se pasan ya indexados por `id`.
 - `plannedMinutes` se obtiene de los instantes reales de los intervalos, descontando los descansos no remunerados que caen dentro de la jornada. Así un turno nocturno puede durar 7 o 9 horas en los cambios de horario.
 - Los descansos se ubican en el día del turno o en el siguiente si cruzan medianoche.
@@ -971,6 +972,7 @@ Reglas:
 - `rotating`: `anchorDate` es la fecha que corresponde al `dayIndex` 0.
 - No puede haber dos patrones activos solapados en fechas para el mismo usuario.
 - Un cambio de patrón cierra el anterior con `endDate` o lo archiva; nunca reescribe el historial.
+- Archivar fija `endDate` antes de marcar `archivedAt`, para que el histórico siga resolviéndose.
 
 ## 7.4. PatternDay
 
@@ -1946,6 +1948,13 @@ Cualquier modificación debe documentarse y justificarse.
 - Implementado el motor puro en `src/lib/engine` (`resolveDay` y `resolveRange`).
 - Ampliado el contrato de §5.21 con `shiftTypes`, patrones, días de patrón y excepciones tipadas.
 - `plannedMinutes` se calcula con instantes reales y descuenta pausas no remuneradas, incluidos nocturnos y DST.
+
+## Versión 1.6
+
+- Añadido el backend Convex de patrones (`list`, `get`, `create`, `update`, `rename`, `archive`) con validación y detección de solapamientos.
+- Añadidas las excepciones (`listRange`, `getByDate`, `create`, `update`, `remove`) con rechazo de duplicados por fecha.
+- Añadida la query `calendar.getRange`, que carga datos del usuario y llama a `resolveRange`.
+- Archivado y edición de patrones definidos para no reescribir el historial.
 
 ---
 

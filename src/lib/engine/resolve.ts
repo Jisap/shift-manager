@@ -53,10 +53,7 @@ function activePatternFor(
   date: LocalDate,
 ): PatternDefinition | undefined {
   return patterns
-    .filter(
-      (pattern) =>
-        pattern.archivedAt === undefined && patternCovers(pattern, date),
-    )
+    .filter((pattern) => patternCovers(pattern, date))
     .sort(byStartDateDescending)[0];
 }
 
@@ -171,11 +168,10 @@ function buildShift(
       ? 0
       : unpaidBreakMinutes(date, breaks, workSegments, timezone);
 
-  return {
+  const resolved: ResolvedDay = {
     date,
     kind: "shift",
     source,
-    shiftTypeId,
     intervals,
     startInstant,
     endInstant,
@@ -187,6 +183,10 @@ function buildShift(
       ),
     ),
   };
+  if (shiftTypeId !== undefined) {
+    resolved.shiftTypeId = shiftTypeId;
+  }
+  return resolved;
 }
 
 /**

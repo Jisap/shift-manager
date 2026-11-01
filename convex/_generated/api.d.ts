@@ -9,7 +9,10 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as calendar from "../calendar.js";
 import type * as http from "../http.js";
+import type * as overrides from "../overrides.js";
+import type * as patterns from "../patterns.js";
 import type * as shiftTypes from "../shiftTypes.js";
 
 import type {
@@ -20,7 +23,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  calendar: typeof calendar;
   http: typeof http;
+  overrides: typeof overrides;
+  patterns: typeof patterns;
   shiftTypes: typeof shiftTypes;
 }>;
 
