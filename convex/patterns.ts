@@ -51,6 +51,10 @@ type UserId = Id<"users">;
 
 const MAX_CYCLE_LENGTH = 365;
 
+/**
+ * Extrae el userId autenticado del contexto de Convex.
+ * Lanza `UNAUTHENTICATED` si no hay sesión activa.
+ */
 async function requireUserId(ctx: DbContext) {
   const userId = await getAuthUserId(ctx);
   if (userId === null) {
@@ -62,11 +66,19 @@ async function requireUserId(ctx: DbContext) {
   return userId;
 }
 
+/**
+ * Obtiene la zona horaria configurada del usuario,
+ * con `Europe/Madrid` como valor por defecto si no la ha establecido.
+ */
 async function userTimezone(ctx: DbContext, userId: UserId): Promise<string> {
   const user = await ctx.db.get(userId);
   return user?.timezone ?? "Europe/Madrid";
 }
 
+/**
+ * Valida y normaliza el nombre del patrón: elimina espacios extremos
+ * y comprueba que tenga entre 1 y 60 caracteres.
+ */
 function validateName(name: string): string {
   const trimmed = name.trim();
   if (trimmed.length === 0 || trimmed.length > 60) {
@@ -78,6 +90,15 @@ function validateName(name: string): string {
   return trimmed;
 }
 
+/**
+ * Valida todos los campos de un patrón de turnos antes de persistirlo:
+ * - Nombre entre 1 y 60 caracteres.
+ * - `cycleLength` entero; exactamente 7 para semanales; 1-365 para rotativos.
+ * - Fechas válidas en formato `YYYY-MM-DD` y `endDate >= startDate` si se proporciona.
+ * - Para patrones semanales, `anchorDate` debe caer en lunes.
+ * - El array `days` debe tener exactamente `cycleLength` entradas con índices únicos y sin huecos.
+ * - Los días no festivos deben tener `shiftTypeId`.
+ */
 function validatePattern(input: PatternInput): {
   name: string;
   cycleLength: number;
@@ -187,6 +208,11 @@ function validatePattern(input: PatternInput): {
   };
 }
 
+/**
+ * Verifica que todos los `shiftTypeId` referenciados en los días del patrón
+ * existan en la base de datos, pertenezcan al usuario autenticado y no estén archivados.
+ * Devuelve los días normalizados (sin `shiftTypeId` en días de descanso).
+ */
 async function validateShiftOwnership(
   ctx: DbContext,
   userId: UserId,
@@ -231,6 +257,12 @@ async function validateShiftOwnership(
   });
 }
 
+/**
+ * Comprueba que ningún patrón activo del usuario se solape con el rango de fechas propuesto.
+ * Se puede excluir un patrón de la comprobación mediante `ignoreId` (usado en las actualizaciones
+ * para que el propio patrón no colisione consigo mismo).
+ * Lanza `CONFLICT` si se detecta solapamiento.
+ */
 async function assertNoOverlap(
   ctx: DbContext,
   userId: UserId,
@@ -258,6 +290,10 @@ async function assertNoOverlap(
   }
 }
 
+/**
+ * Carga todos los días (`patternDays`) de un patrón concreto, ordenados por `dayIndex`.
+ * Omite el campo `shiftTypeId` de los documentos que no lo tienen.
+ */
 async function loadPatternDays(
   ctx: DbContext,
   patternId: Id<"shiftPatterns">,
@@ -277,6 +313,7 @@ async function loadPatternDays(
     }));
 }
 
+/** Devuelve todos los patrones no archivados del usuario, incluyendo sus días. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -297,6 +334,7 @@ export const list = query({
   },
 });
 
+/** Obtiene un patrón por ID junto con sus días. Lanza `NOT_FOUND` si no pertenece al usuario. */
 export const get = query({
   args: { id: v.id("shiftPatterns") },
   handler: async (ctx, args) => {
@@ -315,6 +353,10 @@ export const get = query({
   },
 });
 
+/**
+ * Crea un nuevo patrón de turnos con sus días de ciclo.
+ * Pasos: validar campos → verificar propiedad de los turnos → comprobar solapamiento → persistir.
+ */
 export const create = mutation({
   args: { ...patternFields, days: v.array(patternDayFields) },
   handler: async (ctx, args) => {
@@ -352,6 +394,11 @@ export const create = mutation({
   },
 });
 
+/**
+ * Actualiza un patrón existente que aún no ha comenzado (preserva el histórico).
+ * Rechaza con `CONFLICT` si `startDate <= hoy`, ya que reescribiría días ya resueltos.
+ * Elimina los días existentes y los reinserta con la nueva definición del ciclo.
+ */
 export const update = mutation({
   args: {
     id: v.id("shiftPatterns"),
@@ -416,6 +463,10 @@ export const update = mutation({
   },
 });
 
+/**
+ * Renombra un patrón sin modificar sus fechas ni su ciclo.
+ * Operación ligera que no afecta al histórico.
+ */
 export const rename = mutation({
   args: { id: v.id("shiftPatterns"), name: v.string() },
   handler: async (ctx, args) => {
@@ -434,6 +485,14 @@ export const rename = mutation({
   },
 });
 
+/**
+ * Archiva (cierra) un patrón sin eliminarlo, para conservar el histórico.
+ * - Si se proporciona `closeDate`, el patrón termina en esa fecha.
+ * - Si no se proporciona, cierra en la fecha de hoy (o en el día anterior a `startDate`
+ *   si el patrón aún no ha comenzado).
+ * - Si `closeDate` supera el `endDate` definido del patrón, prevalece el `endDate`.
+ * - Idempotente: si ya está archivado, no hace nada.
+ */
 export const archive = mutation({
   args: { id: v.id("shiftPatterns"), closeDate: v.optional(v.string()) },
   handler: async (ctx, args) => {

@@ -34,6 +34,10 @@ type UserId = Id<"users">;
 
 const MAX_RANGE_DAYS = 366;
 
+/**
+ * Extrae el userId autenticado del contexto de Convex.
+ * Lanza `UNAUTHENTICATED` si no hay sesión activa.
+ */
 async function requireUserId(ctx: DbContext): Promise<UserId> {
   const userId = await getAuthUserId(ctx);
   if (userId === null) {
@@ -45,6 +49,10 @@ async function requireUserId(ctx: DbContext): Promise<UserId> {
   return userId;
 }
 
+/**
+ * Valida que el rango de fechas sea sintácticamente correcto, esté en orden
+ * y no supere el máximo permitido de 366 días.
+ */
 function validateRange(startDate: string, endDate: string): void {
   if (!isValidLocalDate(startDate) || !isValidLocalDate(endDate)) {
     throw new ConvexError({
@@ -66,6 +74,11 @@ function validateRange(startDate: string, endDate: string): void {
   }
 }
 
+/**
+ * Valida un array de intervalos de trabajo:
+ * - Entre 1 y 4 intervalos (soporta partición de jornada, p.ej. turno partido).
+ * - Cada intervalo debe tener horas `HH:mm` válidas, y la entrada ≠ salida.
+ */
 function validateIntervals(intervals: Interval[]): Interval[] {
   if (intervals.length === 0 || intervals.length > 4) {
     throw new ConvexError({
@@ -90,6 +103,10 @@ function validateIntervals(intervals: Interval[]): Interval[] {
   return intervals;
 }
 
+/**
+ * Normaliza las notas opcionales: elimina espacios extremos,
+ * devuelve `undefined` si queda vacío y rechaza textos superiores a 500 caracteres.
+ */
 function validateNotes(notes: string | undefined): string | undefined {
   if (notes === undefined) {
     return undefined;
@@ -104,6 +121,10 @@ function validateNotes(notes: string | undefined): string | undefined {
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
+/**
+ * Verifica que un tipo de turno exista, pertenezca al usuario autenticado
+ * y no esté archivado. Devuelve el ID validado.
+ */
 async function validateShift(
   ctx: DbContext,
   userId: UserId,
@@ -123,6 +144,11 @@ async function validateShift(
   return shift._id;
 }
 
+/**
+ * Normaliza y valida todos los campos de un override antes de persistirlo:
+ * - Los overrides de tipo `rest` solo conservan las notas.
+ * - Los de tipo `shift` o `extra` requieren al menos intervalos explícitos o un `shiftTypeId` válido.
+ */
 async function normalize(
   ctx: DbContext,
   userId: UserId,
@@ -158,6 +184,9 @@ async function normalize(
   return { kind: input.kind, shiftTypeId, intervals, notes };
 }
 
+/**
+ * Devuelve todas las excepciones del usuario en un rango de fechas dado, ordenadas por fecha.
+ */
 export const listRange = query({
   args: { startDate: v.string(), endDate: v.string() },
   handler: async (ctx, args) => {
@@ -178,6 +207,9 @@ export const listRange = query({
   },
 });
 
+/**
+ * Obtiene la excepción del usuario para una fecha concreta, o `null` si no existe.
+ */
 export const getByDate = query({
   args: { date: v.string() },
   handler: async (ctx, args) => {
@@ -197,6 +229,10 @@ export const getByDate = query({
   },
 });
 
+/**
+ * Crea una excepción para la fecha indicada.
+ * Lanza `CONFLICT` si ya existe una excepción para esa fecha (una por usuario y fecha).
+ */
 export const create = mutation({
   args: { date: v.string(), ...overrideFields },
   handler: async (ctx, args) => {
@@ -234,6 +270,10 @@ export const create = mutation({
   },
 });
 
+/**
+ * Actualiza una excepción existente. La fecha no se puede cambiar
+ * (usar `remove` + `create` si se necesita cambiar la fecha).
+ */
 export const update = mutation({
   args: { id: v.id("scheduleOverrides"), ...overrideFields },
   handler: async (ctx, args) => {
@@ -257,6 +297,7 @@ export const update = mutation({
   },
 });
 
+/** Elimina permanentemente una excepción. Restaura el día al cálculo de patrón. */
 export const remove = mutation({
   args: { id: v.id("scheduleOverrides") },
   handler: async (ctx, args) => {

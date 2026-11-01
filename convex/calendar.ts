@@ -16,6 +16,10 @@ import {
 const DEFAULT_TIMEZONE = "Europe/Madrid";
 const MAX_RANGE_DAYS = 366;
 
+/**
+ * Comprueba que el string de zona horaria sea válido usando la API `Intl`.
+ * Si el valor es inválido o `undefined`, devuelve el timezone por defecto.
+ */
 function safeTimezone(value: string | undefined): string {
   if (value === undefined) {
     return DEFAULT_TIMEZONE;
@@ -28,6 +32,10 @@ function safeTimezone(value: string | undefined): string {
   }
 }
 
+/**
+ * Valida que el rango de fechas sea sintácticamente correcto, esté en orden
+ * y no supere el máximo permitido de 366 días.
+ */
 function validateRange(startDate: string, endDate: string): void {
   if (!isValidLocalDate(startDate) || !isValidLocalDate(endDate)) {
     throw new ConvexError({
@@ -49,6 +57,19 @@ function validateRange(startDate: string, endDate: string): void {
   }
 }
 
+/**
+ * Resuelve y devuelve el calendario del usuario para un rango de fechas.
+ *
+ * Proceso:
+ * 1. Autentica al usuario.
+ * 2. Valida el rango (formato, orden y límite de 366 días).
+ * 3. Carga en paralelo: perfil del usuario, tipos de turno, patrones y excepciones del rango.
+ * 4. Carga los días de cada patrón en paralelo.
+ * 5. Convierte los documentos de Convex a las interfaces tipadas del motor puro.
+ * 6. Llama a `resolveRange` del motor para calcular cada día según la jerarquía
+ *    (override > patrón activo > descanso).
+ * 7. Retorna el array de días resueltos junto con el timezone y los límites del rango.
+ */
 export const getRange = query({
   args: { startDate: v.string(), endDate: v.string() },
   handler: async (ctx, args) => {
@@ -91,6 +112,7 @@ export const getRange = query({
       ),
     );
 
+    // Construir mapa id → ShiftTypeDefinition para el motor
     const shiftTypes: Record<string, ShiftTypeDefinition> = {};
     for (const shift of shiftDocs) {
       shiftTypes[shift._id] = {
@@ -111,6 +133,7 @@ export const getRange = query({
       archivedAt: pattern.archivedAt,
     }));
 
+    // Aplanar los días de todos los patrones en un único array
     const patternDays: PatternDayDefinition[] = patternDayDocs
       .flat()
       .map((day) => ({
