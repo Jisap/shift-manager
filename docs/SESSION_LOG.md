@@ -14,3 +14,5 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-01 11:32 | opencode (deepseek-v4.1)   | Backend Convex de patrones, excepciones y calendario + 8 tests de fechas | [sessions/2026-11-01-1132-opencode.md](sessions/2026-11-01-1132-opencode.md) |
 | 2026-11-01 11:52 | opencode (deepseek-v4.1)   | UI de patrones y calendario mensual conectados al motor | [sessions/2026-11-01-1152-opencode.md](sessions/2026-11-01-1152-opencode.md) |
 | 2026-11-02 18:00 | opencode (deepseek-v4.1)   | Excepciones puntuales desde el calendario + tests del validador | [sessions/2026-11-02-1800-opencode.md](sessions/2026-11-02-1800-opencode.md) |
+| 2026-11-02 18:15 | opencode (deepseek-v4.1)   | Gestión manual de festivos en el calendario + base para contar festivos trabajados | [sessions/2026-11-02-1815-opencode.md](sessions/2026-11-02-1815-opencode.md) |
+| 2026-11-02 18:25 | opencode (deepseek-v4.1)   | Declaración explícita de horas extra por turno con tramos y total | [sessions/2026-11-02-1825-opencode.md](sessions/2026-11-02-1825-opencode.md) |

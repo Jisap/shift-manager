@@ -25,16 +25,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatHours } from "@/lib/calculations/overtime";
+import { DayHolidayEditor } from "./DayHolidayEditor";
+import { DayOvertimeEditor } from "./DayOvertimeEditor";
 import { DayOverrideEditor } from "./DayOverrideEditor";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-
-/** Convierte minutos en texto legible: `"2 h"`, `"1 h 30 min"`, etc. */
-function formatHours(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
-}
 
 export function CalendarView() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -62,6 +58,14 @@ export function CalendarView() {
     api.overrides.listRange,
     isAuthenticated ? { startDate, endDate } : "skip",
   );
+  const holidays = useQuery(
+    api.holidays.listRange,
+    isAuthenticated ? { startDate, endDate } : "skip",
+  );
+  const timeEntries = useQuery(
+    api.timeEntries.listRange,
+    isAuthenticated ? { startDate, endDate } : "skip",
+  );
 
   // Los datos de Convex llegan como arrays; los convertimos a Map para
   // acceso O(1) por id/fecha en el render del grid.
@@ -81,6 +85,43 @@ export function CalendarView() {
   // La excepción del día seleccionado se pasa al editor para pre-rellenar el formulario.
   const selectedOverride =
     selectedDate === null ? undefined : overridesByDate.get(selectedDate);
+  const holidaysByDate = useMemo(() => {
+    type HolidayList = NonNullable<typeof holidays>;
+    const map = new Map<string, HolidayList>();
+    for (const holiday of holidays ?? []) {
+      const list = map.get(holiday.date) ?? [];
+      list.push(holiday);
+      map.set(holiday.date, list);
+    }
+    return map;
+  }, [holidays]);
+  const selectedHolidays =
+    selectedDate === null ? [] : (holidaysByDate.get(selectedDate) ?? []);
+  const selectedResolved =
+    selectedDate === null ? undefined : daysByDate.get(selectedDate);
+  const selectedShift =
+    selectedResolved?.shiftTypeId !== undefined
+      ? shiftsById.get(selectedResolved.shiftTypeId)
+      : undefined;
+  const monthHolidays = (holidays ?? []).filter(
+    (holiday) => holiday.date >= monthStart && holiday.date <= monthEnd,
+  ).length;
+  const timeEntriesByDate = useMemo(
+    () =>
+      new Map((timeEntries ?? []).map((entry) => [entry.date, entry])),
+    [timeEntries],
+  );
+  const selectedOvertime =
+    selectedDate === null ? undefined : timeEntriesByDate.get(selectedDate);
+  const monthOvertimeMinutes = (timeEntries ?? [])
+    .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
+    .reduce((total, entry) => total + (entry.overtimeMinutes ?? 0), 0);
+  const monthOvertimeDays = (timeEntries ?? []).filter(
+    (entry) =>
+      entry.date >= monthStart &&
+      entry.date <= monthEnd &&
+      (entry.overtimeMinutes ?? 0) > 0,
+  ).length;
   // Total de minutos planificados en el mes (excluye los días fuera del mes
   // que aparecen en el grid para completar semanas).
   const monthMinutes = (calendar?.days ?? [])
@@ -147,20 +188,44 @@ export function CalendarView() {
         <div className="text-muted-foreground text-sm">
           {calendar === undefined
             ? "Calculando…"
-            : `${formatHours(monthMinutes)} previstas este mes`}
+            : `${formatHours(monthMinutes)} previstas este mes · ${monthHolidays} ${
+                monthHolidays === 1 ? "festivo" : "festivos"
+              }${
+                monthOvertimeMinutes > 0
+                  ? ` · ${formatHours(monthOvertimeMinutes)} extra en ${monthOvertimeDays} ${
+                      monthOvertimeDays === 1 ? "día" : "días"
+                    }`
+                  : ""
+              }`}
         </div>
       </div>
 
       {selectedDate ? (
         // La `key` incluye el id de la excepción (o "new") para que React
         // destruya y recree el editor al cambiar de día o al guardar/eliminar.
-        <DayOverrideEditor
-          key={`${selectedDate}-${selectedOverride?._id ?? "new"}`}
-          date={selectedDate}
-          shifts={shifts ?? []}
-          existing={selectedOverride}
-          onClose={() => setSelectedDate(null)}
-        />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <DayOverrideEditor
+            key={`${selectedDate}-${selectedOverride?._id ?? "new"}`}
+            date={selectedDate}
+            shifts={shifts ?? []}
+            existing={selectedOverride}
+            onClose={() => setSelectedDate(null)}
+          />
+          <DayOvertimeEditor
+            key={`${selectedDate}-${selectedOvertime?.overtimeMinutes ?? "none"}`}
+            date={selectedDate}
+            isHoliday={selectedHolidays.length > 0}
+            shiftTypeId={selectedShift?._id}
+            shiftName={selectedShift?.name}
+            shiftIntervals={selectedResolved?.intervals ?? []}
+            existing={selectedOvertime}
+          />
+          <DayHolidayEditor
+            key={`${selectedDate}-holidays-${selectedHolidays.length}`}
+            date={selectedDate}
+            holidays={selectedHolidays}
+          />
+        </div>
       ) : null}
 
       <div className="text-muted-foreground grid grid-cols-7 gap-1 text-center text-xs font-medium">
@@ -183,6 +248,9 @@ export function CalendarView() {
                 ? shiftsById.get(resolved.shiftTypeId)
                 : undefined;
             const inMonth = isSameMonth(day, month);
+            const dayHolidays = holidaysByDate.get(dateKey) ?? [];
+            const overtimeMinutes =
+              timeEntriesByDate.get(dateKey)?.overtimeMinutes ?? 0;
 
             return (
               <button
@@ -220,6 +288,26 @@ export function CalendarView() {
                     </span>
                   ) : null}
                 </span>
+
+                {dayHolidays.length > 0 ? (
+                  <span className="flex flex-wrap gap-1">
+                    {dayHolidays.map((holiday) => (
+                      <span
+                        key={holiday._id}
+                        className="bg-amber-500/15 text-amber-700 dark:text-amber-300 rounded px-1 text-[10px] font-medium"
+                      >
+                        {holiday.name}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+
+                {overtimeMinutes > 0 ? (
+                  <span className="bg-sky-500/15 text-sky-700 dark:text-sky-300 self-start rounded px-1 text-[10px] font-medium">
+                    +{formatHours(overtimeMinutes)} extra
+                    {dayHolidays.length > 0 ? " · festivo" : ""}
+                  </span>
+                ) : null}
 
                 {resolved?.kind === "shift" ? (
                   <span className="flex flex-col gap-0.5">
@@ -260,7 +348,7 @@ export function CalendarView() {
       )}
 
       <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
-        <span>Pulsa un día para añadir o quitar una excepción.</span>
+        <span>Pulsa un día para añadir o quitar una excepción o un festivo.</span>
         {(shifts ?? []).map((shift) => (
           <span key={shift._id} className="flex items-center gap-1">
             <span
@@ -277,6 +365,17 @@ export function CalendarView() {
             aria-hidden
           />
           Descanso
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            className="size-2.5 rounded-full bg-amber-500/60"
+            aria-hidden
+          />
+          Festivo
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="size-2.5 rounded-full bg-sky-500/60" aria-hidden />
+          Horas extra
         </span>
       </div>
 

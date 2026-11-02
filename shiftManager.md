@@ -1033,13 +1033,17 @@ Representa las horas realmente trabajadas.
 timeEntries: defineTable({
   userId: v.id("users"),
   date: v.string(),        // YYYY-MM-DD local al que se imputa
-  actualStart: v.number(), // epoch ms UTC
-  actualEnd: v.number(),   // epoch ms UTC
+  actualStart: v.optional(v.number()), // epoch ms UTC
+  actualEnd: v.optional(v.number()),   // epoch ms UTC
   intervals: v.optional(
     v.array(v.object({ start: v.number(), end: v.number() }))
   ),
   breakMinutes: v.number(),
   expectedMinutes: v.optional(v.number()), // snapshot del previsto al registrar
+  overtimeIntervals: v.optional(
+    v.array(v.object({ start: v.string(), end: v.string() })) // HH:mm local
+  ),
+  overtimeMinutes: v.optional(v.number()),
   shiftTypeId: v.optional(v.id("shiftTypes")),
   notes: v.optional(v.string()),
   updatedAt: v.number(),
@@ -1051,8 +1055,9 @@ Reglas:
 
 - No referencia `ScheduledShift`, porque el calendario es derivado.
 - Puede existir sin turno planificado (jornada extra real).
-- `actualEnd` debe ser mayor que `actualStart`.
+- `actualEnd > actualStart` cuando se registran horas reales.
 - `expectedMinutes` se congela para que el histórico no cambie si el patrón se edita después.
+- Las horas extra son explícitas: el usuario declara si las hizo, cuántos tramos y en qué horario. El backend calcula `overtimeMinutes` con la zona horaria del usuario.
 
 ## 7.7. Holiday
 

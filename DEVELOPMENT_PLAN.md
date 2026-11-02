@@ -58,7 +58,7 @@ Aceptación: dado un patrón y un rango, el motor resuelve todas las jornadas co
 - [x] Vista mensual.
 - [ ] Vista semanal.
 - [ ] Vista diaria y agenda.
-- [ ] Colores por turno, descansos y festivos (turnos y descansos listos; festivos pendientes).
+- [x] Colores por turno, descansos y festivos (turnos, descansos y festivos manuales listos).
 - [x] Excepciones puntuales (`scheduleOverrides`) desde el calendario.
 - [ ] Navegación entre meses y años (meses listos; selector de año pendiente).
 - [ ] Revisión responsive y de accesibilidad.
@@ -71,6 +71,8 @@ Aceptación: calendario legible y editable; una excepción por fecha.
 - [ ] Calcular horas reales y compararlas con las previstas.
 - [ ] `expectedMinutes` como instantánea.
 - [ ] Registros sin turno planificado.
+- [x] Declarar horas extra por día sobre el turno planificado: tramos, horario y total calculado.
+- [ ] Clasificar horas reales (normal, extra, festivo, festivo-extra) y contarlas, sin multiplicadores económicos.
 - [ ] Tests de cálculos y DST.
 
 Aceptación: comparación fiable previsto/real.

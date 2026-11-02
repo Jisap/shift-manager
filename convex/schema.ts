@@ -77,13 +77,15 @@ export default defineSchema({
   timeEntries: defineTable({
     userId: v.id("users"),
     date: v.string(),
-    actualStart: v.number(),
-    actualEnd: v.number(),
+    actualStart: v.optional(v.number()),
+    actualEnd: v.optional(v.number()),
     intervals: v.optional(
       v.array(v.object({ start: v.number(), end: v.number() })),
     ),
     breakMinutes: v.number(),
     expectedMinutes: v.optional(v.number()),
+    overtimeIntervals: v.optional(v.array(localInterval)),
+    overtimeMinutes: v.optional(v.number()),
     shiftTypeId: v.optional(v.id("shiftTypes")),
     notes: v.optional(v.string()),
     updatedAt: v.number(),

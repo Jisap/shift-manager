@@ -119,11 +119,15 @@ Las tablas de autenticación las define `@convex-dev/auth` (usuarios, sesiones, 
 {
   userId: v.id("users"),
   date: v.string(),
-  actualStart: v.number(),
-  actualEnd: v.number(),
+  // Opcionales: permiten registrar solo horas extra sobre el turno planificado.
+  actualStart: v.optional(v.number()),
+  actualEnd: v.optional(v.number()),
   intervals: v.optional(v.array(v.object({ start: v.number(), end: v.number() }))),
   breakMinutes: v.number(),
   expectedMinutes: v.optional(v.number()),
+  // Horas extra declaradas por el usuario para ese turno.
+  overtimeIntervals: v.optional(v.array({ start: v.string(), end: v.string() })),
+  overtimeMinutes: v.optional(v.number()),
   shiftTypeId: v.optional(v.id("shiftTypes")),
   notes: v.optional(v.string()),
   updatedAt: v.number(),
@@ -134,8 +138,10 @@ Las tablas de autenticación las define `@convex-dev/auth` (usuarios, sesiones, 
 
 - No referencia `ScheduledShift`: el calendario es derivado.
 - Puede existir sin turno planificado.
-- `actualEnd > actualStart`.
+- `actualEnd > actualStart` cuando se registran horas reales.
 - `expectedMinutes` es una instantánea para no alterar el histórico.
+- Las horas extra son explícitas: el usuario las declara con sus tramos `HH:mm`;
+  el backend calcula `overtimeMinutes` con la zona horaria del usuario.
 
 ### holidays
 
