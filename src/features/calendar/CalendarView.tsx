@@ -56,6 +56,8 @@ export function CalendarView() {
     isAuthenticated ? { startDate, endDate } : "skip",
   );
   const shifts = useQuery(api.shiftTypes.list, isAuthenticated ? {} : "skip");
+  // `overrides` se carga en paralelo al calendario para poder leer notas
+  // y el estado de excepción activa sin esperar a que el motor las resuelva.
   const overrides = useQuery(
     api.overrides.listRange,
     isAuthenticated ? { startDate, endDate } : "skip",
@@ -76,6 +78,7 @@ export function CalendarView() {
     () => new Map((overrides ?? []).map((override) => [override.date, override])),
     [overrides],
   );
+  // La excepción del día seleccionado se pasa al editor para pre-rellenar el formulario.
   const selectedOverride =
     selectedDate === null ? undefined : overridesByDate.get(selectedDate);
   // Total de minutos planificados en el mes (excluye los días fuera del mes
@@ -149,6 +152,8 @@ export function CalendarView() {
       </div>
 
       {selectedDate ? (
+        // La `key` incluye el id de la excepción (o "new") para que React
+        // destruya y recree el editor al cambiar de día o al guardar/eliminar.
         <DayOverrideEditor
           key={`${selectedDate}-${selectedOverride?._id ?? "new"}`}
           date={selectedDate}

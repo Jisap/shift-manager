@@ -77,6 +77,10 @@ export function DayOverrideEditor({
   const kind = useWatch({ control: form.control, name: "kind" });
   const shiftTypeId = useWatch({ control: form.control, name: "shiftTypeId" });
 
+  /**
+   * Envía el formulario al backend (creación o actualización según `existing`).
+   * Normaliza `notes` vacío a `undefined` y omite `shiftTypeId` en descansos.
+   */
   async function onSubmit(values: OverrideFormValues) {
     setError(null);
     const payload = {
@@ -102,6 +106,10 @@ export function DayOverrideEditor({
     }
   }
 
+  /**
+   * Elimina la excepción existente. Solo se llama si `existing` está definido;
+   * la comprobación interna hace la operación idempotente frente a doble clic.
+   */
   async function remove() {
     if (!existing) {
       return;
