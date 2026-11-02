@@ -59,7 +59,7 @@ Aceptación: dado un patrón y un rango, el motor resuelve todas las jornadas co
 - [ ] Vista semanal.
 - [ ] Vista diaria y agenda.
 - [ ] Colores por turno, descansos y festivos (turnos y descansos listos; festivos pendientes).
-- [ ] Excepciones puntuales (`scheduleOverrides`) desde el calendario.
+- [x] Excepciones puntuales (`scheduleOverrides`) desde el calendario.
 - [ ] Navegación entre meses y años (meses listos; selector de año pendiente).
 - [ ] Revisión responsive y de accesibilidad.
 

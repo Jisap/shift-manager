@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { weekdayOf } from "@/lib/dates/local-date";
+import { convexErrorMessage } from "@/lib/utils/convex-error";
 import {
   defaultPatternValues,
   nextMondayLocalDate,
@@ -29,23 +30,6 @@ import {
 
 const selectClassName =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
-
-/**
- * Extrae el mensaje de error legible de una excepción lanzada por Convex.
- * Convex serializa los errores con `ConvexError` como `{ data: { message } }`.
- * Si la estructura no coincide, devuelve el texto de `fallback`.
- */
-function errorMessage(error: unknown, fallback: string): string {
-  if (error === null || typeof error !== "object" || !("data" in error)) {
-    return fallback;
-  }
-  const data = (error as { data?: unknown }).data;
-  if (data === null || typeof data !== "object" || !("message" in data)) {
-    return fallback;
-  }
-  const message = (data as { message?: unknown }).message;
-  return typeof message === "string" && message.length > 0 ? message : fallback;
-}
 
 export function PatternsManager() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -197,7 +181,7 @@ export function PatternsManager() {
       }
       resetForm();
     } catch (caught) {
-      setError(errorMessage(caught, "No se pudo guardar el patrón."));
+      setError(convexErrorMessage(caught, "No se pudo guardar el patrón."));
     }
   }
 
@@ -228,7 +212,7 @@ export function PatternsManager() {
       setRenamingId(null);
       setRenameValue("");
     } catch (caught) {
-      setError(errorMessage(caught, "No se pudo renombrar el patrón."));
+      setError(convexErrorMessage(caught, "No se pudo renombrar el patrón."));
     }
   }
 
@@ -244,7 +228,7 @@ export function PatternsManager() {
         resetForm();
       }
     } catch (caught) {
-      setError(errorMessage(caught, "No se pudo archivar el patrón."));
+      setError(convexErrorMessage(caught, "No se pudo archivar el patrón."));
     }
   }
 

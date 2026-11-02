@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { DayOverrideEditor } from "./DayOverrideEditor";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -38,6 +39,7 @@ function formatHours(minutes: number): string {
 export function CalendarView() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // El grid de la vista mensual necesita días de la semana anterior/siguiente
   // para completar filas completas (lunes como primer día de semana).
@@ -54,6 +56,10 @@ export function CalendarView() {
     isAuthenticated ? { startDate, endDate } : "skip",
   );
   const shifts = useQuery(api.shiftTypes.list, isAuthenticated ? {} : "skip");
+  const overrides = useQuery(
+    api.overrides.listRange,
+    isAuthenticated ? { startDate, endDate } : "skip",
+  );
 
   // Los datos de Convex llegan como arrays; los convertimos a Map para
   // acceso O(1) por id/fecha en el render del grid.
@@ -66,6 +72,12 @@ export function CalendarView() {
     () => new Map((calendar?.days ?? []).map((day) => [day.date, day])),
     [calendar],
   );
+  const overridesByDate = useMemo(
+    () => new Map((overrides ?? []).map((override) => [override.date, override])),
+    [overrides],
+  );
+  const selectedOverride =
+    selectedDate === null ? undefined : overridesByDate.get(selectedDate);
   // Total de minutos planificados en el mes (excluye los días fuera del mes
   // que aparecen en el grid para completar semanas).
   const monthMinutes = (calendar?.days ?? [])
@@ -136,6 +148,16 @@ export function CalendarView() {
         </div>
       </div>
 
+      {selectedDate ? (
+        <DayOverrideEditor
+          key={`${selectedDate}-${selectedOverride?._id ?? "new"}`}
+          date={selectedDate}
+          shifts={shifts ?? []}
+          existing={selectedOverride}
+          onClose={() => setSelectedDate(null)}
+        />
+      ) : null}
+
       <div className="text-muted-foreground grid grid-cols-7 gap-1 text-center text-xs font-medium">
         {WEEKDAYS.map((weekday) => (
           <div key={weekday} className="py-1">
@@ -158,12 +180,16 @@ export function CalendarView() {
             const inMonth = isSameMonth(day, month);
 
             return (
-              <div
+              <button
                 key={dateKey}
+                type="button"
+                aria-pressed={selectedDate === dateKey}
+                onClick={() => setSelectedDate(dateKey)}
                 className={cn(
-                  "flex min-h-28 flex-col gap-1 rounded-lg border p-2 text-left",
+                  "flex min-h-28 flex-col gap-1 rounded-lg border p-2 text-left transition hover:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
                   inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
                   dateKey === todayKey && "ring-primary ring-2",
+                  selectedDate === dateKey && "border-primary",
                 )}
                 style={
                   shift
@@ -174,7 +200,7 @@ export function CalendarView() {
                     : undefined
                 }
               >
-                <div className="flex items-center justify-between">
+                <span className="flex items-center justify-between">
                   <span
                     className={cn(
                       "text-xs font-medium",
@@ -188,10 +214,10 @@ export function CalendarView() {
                       Cambio
                     </span>
                   ) : null}
-                </div>
+                </span>
 
                 {resolved?.kind === "shift" ? (
-                  <div className="flex flex-col gap-0.5">
+                  <span className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-1 text-xs font-semibold">
                       {shift ? (
                         <span
@@ -210,19 +236,26 @@ export function CalendarView() {
                     <span className="text-muted-foreground text-[11px]">
                       {formatHours(resolved.plannedMinutes)}
                     </span>
-                  </div>
+                  </span>
                 ) : (
                   <span className="text-muted-foreground text-xs">
                     Descanso
                   </span>
                 )}
-              </div>
+
+                {overridesByDate.get(dateKey)?.notes ? (
+                  <span className="text-muted-foreground line-clamp-2 text-[11px] italic">
+                    {overridesByDate.get(dateKey)?.notes}
+                  </span>
+                ) : null}
+              </button>
             );
           })}
         </div>
       )}
 
       <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
+        <span>Pulsa un día para añadir o quitar una excepción.</span>
         {(shifts ?? []).map((shift) => (
           <span key={shift._id} className="flex items-center gap-1">
             <span
