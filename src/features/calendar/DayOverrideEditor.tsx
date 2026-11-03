@@ -24,17 +24,22 @@ import {
   type OverrideFormValues,
 } from "@/lib/validators/override";
 
+// Clases compartidas para los <select> y el <textarea> nativos, de modo que
+// tengan el mismo aspecto (bordes, foco, modo oscuro) que los componentes de
+// shadcn/ui del resto de la app.
 const selectClassName =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 const textareaClassName =
   "min-h-20 w-full rounded-lg border border-input bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
+// Datos mínimos de un tipo de turno que necesita el desplegable.
 type ShiftOption = {
   _id: Id<"shiftTypes">;
   name: string;
 };
 
+// Excepción ya guardada en la base de datos para ese día (si existe).
 type ExistingOverride = {
   _id: Id<"scheduleOverrides">;
   kind: OverrideFormValues["kind"];
@@ -43,9 +48,13 @@ type ExistingOverride = {
 };
 
 type DayOverrideEditorProps = {
+  /** Fecha del día a editar, en formato "yyyy-MM-dd". */
   date: string;
+  /** Tipos de turno disponibles para el desplegable. */
   shifts: ShiftOption[];
+  /** Excepción actual del día; si no se pasa, el panel crea una nueva. */
   existing?: ExistingOverride;
+  /** Se invoca al guardar, eliminar o cancelar para cerrar el panel. */
   onClose: () => void;
 };
 
@@ -59,21 +68,28 @@ export function DayOverrideEditor({
   existing,
   onClose,
 }: DayOverrideEditorProps) {
+  // Mutaciones de Convex: una por cada operación posible.
   const createOverride = useMutation(api.overrides.create);
   const updateOverride = useMutation(api.overrides.update);
   const removeOverride = useMutation(api.overrides.remove);
+  // Mensaje de error del backend (null si no hay ninguno).
   const [error, setError] = useState<string | null>(null);
 
+  // Formulario con validación Zod. Si ya existe una excepción se pre-rellena
+  // con sus valores; si no, se usan los valores por defecto.
   const form = useForm<OverrideFormValues>({
     resolver: zodResolver(overrideFormSchema),
     defaultValues: existing
       ? {
-          kind: existing.kind,
-          shiftTypeId: existing.shiftTypeId,
-          notes: existing.notes ?? "",
-        }
+        kind: existing.kind,
+        shiftTypeId: existing.shiftTypeId,
+        notes: existing.notes ?? "",
+      }
       : defaultOverrideValues(),
   });
+  // `useWatch` suscribe el componente a estos campos para re-renderizar al
+  // cambiar: `kind` decide si se muestra el selector de turno y
+  // `shiftTypeId` es el valor controlado de ese selector.
   const kind = useWatch({ control: form.control, name: "kind" });
   const shiftTypeId = useWatch({ control: form.control, name: "shiftTypeId" });
 
@@ -127,6 +143,8 @@ export function DayOverrideEditor({
 
   return (
     <Card>
+      {/* Cabecera: fecha en español (p. ej. "lunes 3 de noviembre") y una
+          descripción que cambia según se cree o se edite */}
       <CardHeader>
         <CardTitle className="capitalize">
           {format(parseISO(date), "EEEE d 'de' MMMM", { locale: es })}
@@ -143,6 +161,9 @@ export function DayOverrideEditor({
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <div className="grid gap-3 sm:grid-cols-2">
+            {/* Tipo de excepción: descanso, turno o día extra.
+                Se controla a mano con setValue; solo revalida mientras
+                el formulario ya se haya enviado alguna vez. */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="override-kind">Tipo</Label>
               <select
@@ -163,6 +184,8 @@ export function DayOverrideEditor({
               </select>
             </div>
 
+            {/* Selector de turno: solo tiene sentido si no es un descanso.
+                Una opción vacía se guarda como `undefined`. */}
             {kind !== "rest" ? (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="override-shift">Turno</Label>
@@ -183,6 +206,7 @@ export function DayOverrideEditor({
                     </option>
                   ))}
                 </select>
+                {/* Error de validación Zod (p. ej. turno obligatorio) */}
                 {form.formState.errors.shiftTypeId ? (
                   <p className="text-destructive text-xs">
                     {form.formState.errors.shiftTypeId.message}
@@ -192,6 +216,7 @@ export function DayOverrideEditor({
             ) : null}
           </div>
 
+          {/* Notas libres; aquí basta `register` porque es un campo no controlado */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="override-notes">Notas (opcional)</Label>
             <textarea
@@ -206,12 +231,15 @@ export function DayOverrideEditor({
             ) : null}
           </div>
 
+          {/* Error devuelto por el backend; `role="alert"` para lectores de pantalla */}
           {error ? (
             <p className="text-destructive text-sm" role="alert">
               {error}
             </p>
           ) : null}
 
+          {/* Acciones: guardar (deshabilitado mientras se envía), quitar
+              (solo si ya existe la excepción) y cancelar */}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={form.formState.isSubmitting}>
               Guardar excepción
