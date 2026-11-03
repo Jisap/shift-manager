@@ -62,7 +62,8 @@ export function CalendarView() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   // Modo de visualización: mes completo o una semana.
   const [view, setView] = useState<"month" | "week">("month");
-  // Fecha de referencia: primer día del mes o día de la semana visualizada.
+  // Fecha de referencia: cualquier día dentro del periodo visualizado
+  // (empieza en hoy). El mes o la semana se derivan de ella.
   const [cursor, setCursor] = useState(() => new Date());
   // Fecha seleccionada ("yyyy-MM-dd") o null si no hay ninguna.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -199,7 +200,7 @@ export function CalendarView() {
     selectedDate === null ? undefined : timeEntriesByDate.get(selectedDate);
 
   // --------------------------------------------------------------------------
-  // Cálculo de minutos reales y totales del mes
+  // Cálculo de minutos reales y totales del periodo (mes o semana)
   // --------------------------------------------------------------------------
 
   // Minutos realmente trabajados en un registro: (fin - inicio) - descanso.
@@ -216,7 +217,7 @@ export function CalendarView() {
     return Math.max(
       0,
       Math.round((entry.actualEnd - entry.actualStart) / 60000) -
-        entry.breakMinutes,
+      entry.breakMinutes,
     );
   };
   // Total de minutos reales del periodo.
@@ -344,13 +345,11 @@ export function CalendarView() {
           <div className="text-muted-foreground text-sm">
             {calendar === undefined
               ? "Calculando…"
-              : `${formatHours(periodMinutes)} previstas ${periodLabel}${
-                  periodActualMinutes > 0
-                    ? ` · ${formatHours(periodActualMinutes)} reales`
-                    : ""
-                } · ${periodHolidays} ${
-                  periodHolidays === 1 ? "festivo" : "festivos"
-                }`}
+              : `${formatHours(periodMinutes)} previstas ${periodLabel}${periodActualMinutes > 0
+                ? ` · ${formatHours(periodActualMinutes)} reales`
+                : ""
+              } · ${periodHolidays} ${periodHolidays === 1 ? "festivo" : "festivos"
+              }`}
           </div>
           {/* Desglose por categoría; cada etiqueta solo aparece si tiene horas */}
           {periodClassification.total > 0 ? (
@@ -453,7 +452,9 @@ export function CalendarView() {
               resolved?.shiftTypeId !== undefined
                 ? shiftsById.get(resolved.shiftTypeId)
                 : undefined;
-            // Falso para los días de relleno (mes anterior/siguiente).
+            // Falso para los días de relleno de la vista mensual (mes
+            // anterior/siguiente). En la vista semanal todos los días
+            // pertenecen al periodo.
             const inPeriod =
               dateKey >= periodStartKey && dateKey <= periodEndKey;
             const dayHolidays = holidaysByDate.get(dateKey) ?? [];
@@ -483,9 +484,9 @@ export function CalendarView() {
                 style={
                   shift
                     ? {
-                        borderColor: shift.color,
-                        backgroundColor: `${shift.color}12`,
-                      }
+                      borderColor: shift.color,
+                      backgroundColor: `${shift.color}12`,
+                    }
                     : undefined
                 }
               >
@@ -620,7 +621,7 @@ export function CalendarView() {
       {/* Estado vacío: no hay tipos de turno o todo el rango son descansos.
           Invita a crear un patrón de turnos. */}
       {(shifts ?? []).length === 0 ||
-      calendar?.days.every((day) => day.kind === "rest") ? (
+        calendar?.days.every((day) => day.kind === "rest") ? (
         <p className="text-muted-foreground text-sm">
           Aún no hay turnos planificados.{" "}
           <Link className="underline" href="/patterns">
