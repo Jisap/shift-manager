@@ -56,7 +56,7 @@ Aceptación: dado un patrón y un rango, el motor resuelve todas las jornadas co
 ## Fase 4 — Calendario
 
 - [x] Vista mensual.
-- [ ] Vista semanal.
+- [x] Vista semanal.
 - [ ] Vista diaria y agenda.
 - [x] Colores por turno, descansos y festivos (turnos, descansos y festivos manuales listos).
 - [x] Excepciones puntuales (`scheduleOverrides`) desde el calendario.

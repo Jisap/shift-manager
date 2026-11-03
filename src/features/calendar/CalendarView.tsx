@@ -3,7 +3,7 @@
 /**
  * CalendarView
  * ----------------------------------------------------------------------------
- * Vista mensual del calendario de turnos. Muestra, para cada día del mes:
+ * Vista mensual y semanal del calendario de turnos. Muestra, para cada día:
  *   - el turno planificado (o "Descanso"),
  *   - festivos,
  *   - horas reales trabajadas,
@@ -17,11 +17,11 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import {
   addMonths,
+  addWeeks,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
   format,
-  isSameMonth,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
@@ -60,8 +60,10 @@ export function CalendarView() {
 
   // Estado de la sesión de Convex. Sin sesión no se lanzan las queries.
   const { isAuthenticated, isLoading } = useConvexAuth();
-  // Primer día del mes que se está visualizando.
-  const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  // Modo de visualización: mes completo o una semana.
+  const [view, setView] = useState<"month" | "week">("month");
+  // Fecha de referencia: primer día del mes o día de la semana visualizada.
+  const [cursor, setCursor] = useState(() => new Date());
   // Fecha seleccionada ("yyyy-MM-dd") o null si no hay ninguna.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -69,20 +71,42 @@ export function CalendarView() {
   // Rangos de fechas
   // --------------------------------------------------------------------------
 
-  // El grid de la vista mensual necesita días de la semana anterior/siguiente
-  // para completar filas completas (lunes como primer día de semana).
-  const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
-  const gridEnd = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
+  // En la vista mensual el grid necesita días de la semana anterior/siguiente
+  // para completar filas completas (lunes como primer día de semana). En la
+  // vista semanal el grid es exactamente la semana del cursor.
+  const periodStart =
+    view === "month"
+      ? startOfMonth(cursor)
+      : startOfWeek(cursor, { weekStartsOn: 1 });
+  const periodEnd =
+    view === "month"
+      ? endOfMonth(cursor)
+      : endOfWeek(cursor, { weekStartsOn: 1 });
+  const gridStart = startOfWeek(periodStart, { weekStartsOn: 1 });
+  const gridEnd = endOfWeek(periodEnd, { weekStartsOn: 1 });
   // Rango completo del grid (incluye días de relleno de otros meses).
   // Es el que se pide al backend.
   const startDate = format(gridStart, "yyyy-MM-dd");
   const endDate = format(gridEnd, "yyyy-MM-dd");
-  // Rango estricto del mes: se usa para los totales, que no deben contar
+  // Rango estricto del periodo: se usa para los totales, que no deben contar
   // los días de relleno.
-  const monthStart = format(startOfMonth(month), "yyyy-MM-dd");
-  const monthEnd = format(endOfMonth(month), "yyyy-MM-dd");
+  const periodStartKey = format(periodStart, "yyyy-MM-dd");
+  const periodEndKey = format(periodEnd, "yyyy-MM-dd");
   // Clave de hoy, para resaltarlo en el grid.
   const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  // Navegación: avanza mes o semana según la vista activa.
+  const moveCursor = (amount: number) =>
+    setCursor((current) =>
+      view === "month" ? addMonths(current, amount) : addWeeks(current, amount),
+    );
+
+  // Etiqueta textual del periodo mostrado en la cabecera.
+  const periodTitle =
+    view === "month"
+      ? format(cursor, "MMMM 'de' yyyy", { locale: es })
+      : `${format(gridStart, "d MMM", { locale: es })} – ${format(gridEnd, "d MMM yyyy", { locale: es })}`;
+  const periodLabel = view === "month" ? "este mes" : "esta semana";
 
   // --------------------------------------------------------------------------
   // Consultas a Convex
@@ -162,9 +186,9 @@ export function CalendarView() {
     selectedResolved?.shiftTypeId !== undefined
       ? shiftsById.get(selectedResolved.shiftTypeId)
       : undefined;
-  // Número de festivos dentro del mes (excluye los del relleno del grid).
-  const monthHolidays = (holidays ?? []).filter(
-    (holiday) => holiday.date >= monthStart && holiday.date <= monthEnd,
+  // Número de festivos dentro del periodo (excluye los del relleno del grid).
+  const periodHolidays = (holidays ?? []).filter(
+    (holiday) => holiday.date >= periodStartKey && holiday.date <= periodEndKey,
   ).length;
   const timeEntriesByDate = useMemo(
     () => new Map((timeEntries ?? []).map((entry) => [entry.date, entry])),
@@ -192,19 +216,23 @@ export function CalendarView() {
     return Math.max(
       0,
       Math.round((entry.actualEnd - entry.actualStart) / 60000) -
-      entry.breakMinutes,
+        entry.breakMinutes,
     );
   };
-  // Total de minutos reales del mes.
-  const monthActualMinutes = (timeEntries ?? [])
-    .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
+  // Total de minutos reales del periodo.
+  const periodActualMinutes = (timeEntries ?? [])
+    .filter(
+      (entry) => entry.date >= periodStartKey && entry.date <= periodEndKey,
+    )
     .reduce((total, entry) => total + actualMinutesOf(entry), 0);
-  // Desglose del mes por categoría (normal / extra / festivo / festivo-extra).
+  // Desglose del periodo por categoría (normal / extra / festivo / festivo-extra).
   // Cada día se clasifica según sus minutos reales, sus minutos extra y si es
   // festivo o día extra (excepción de tipo "extra"); luego se suman.
-  const monthClassification = sumClassifiedMinutes(
+  const periodClassification = sumClassifiedMinutes(
     (timeEntries ?? [])
-      .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
+      .filter(
+        (entry) => entry.date >= periodStartKey && entry.date <= periodEndKey,
+      )
       .map((entry) =>
         classifyDayMinutes({
           actualMinutes: actualMinutesOf(entry),
@@ -214,10 +242,10 @@ export function CalendarView() {
         }),
       ),
   );
-  // Total de minutos planificados en el mes (excluye los días fuera del mes
-  // que aparecen en el grid para completar semanas).
-  const monthMinutes = (calendar?.days ?? [])
-    .filter((day) => day.date >= monthStart && day.date <= monthEnd)
+  // Total de minutos planificados en el periodo (excluye los días fuera del
+  // periodo que aparecen en el grid de la vista mensual).
+  const periodMinutes = (calendar?.days ?? [])
+    .filter((day) => day.date >= periodStartKey && day.date <= periodEndKey)
     .reduce((total, day) => total + day.plannedMinutes, 0);
   // Todos los días que se pintan en el grid (incluye relleno).
   const gridDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
@@ -251,73 +279,100 @@ export function CalendarView() {
   return (
     <div className="flex w-full flex-col gap-6">
       {/* ------------------------------------------------------------------
-          Cabecera: navegación de mes + resumen de horas del mes
+          Cabecera: vista, navegación del periodo y resumen de horas
           ------------------------------------------------------------------ */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Navegación: mes anterior / título / mes siguiente / volver a hoy */}
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            aria-label="Mes anterior"
-            onClick={() => setMonth((current) => addMonths(current, -1))}
-          >
-            <ChevronLeft />
-          </Button>
-          <h2 className="min-w-48 text-center text-lg font-semibold capitalize">
-            {format(month, "MMMM 'de' yyyy", { locale: es })}
-          </h2>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            aria-label="Mes siguiente"
-            onClick={() => setMonth((current) => addMonths(current, 1))}
-          >
-            <ChevronRight />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setMonth(startOfMonth(new Date()))}
-          >
-            Hoy
-          </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Selector de vista */}
+          <div className="bg-muted flex items-center gap-1 rounded-lg p-1">
+            <Button
+              type="button"
+              variant={view === "month" ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={view === "month"}
+              onClick={() => setView("month")}
+            >
+              Mes
+            </Button>
+            <Button
+              type="button"
+              variant={view === "week" ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={view === "week"}
+              onClick={() => setView("week")}
+            >
+              Semana
+            </Button>
+          </div>
+          {/* Navegación: periodo anterior / título / periodo siguiente / hoy */}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label={view === "month" ? "Mes anterior" : "Semana anterior"}
+              onClick={() => moveCursor(-1)}
+            >
+              <ChevronLeft />
+            </Button>
+            <h2 className="min-w-48 text-center text-lg font-semibold capitalize">
+              {periodTitle}
+            </h2>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label={
+                view === "month" ? "Mes siguiente" : "Semana siguiente"
+              }
+              onClick={() => moveCursor(1)}
+            >
+              <ChevronRight />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCursor(new Date())}
+            >
+              Hoy
+            </Button>
+          </div>
         </div>
-        {/* Resumen del mes: horas previstas, reales (si hay) y festivos */}
+        {/* Resumen del periodo: horas previstas, reales (si hay) y festivos */}
         <div className="flex flex-col items-end gap-2">
           <div className="text-muted-foreground text-sm">
             {calendar === undefined
               ? "Calculando…"
-              : `${formatHours(monthMinutes)} previstas este mes${monthActualMinutes > 0
-                ? ` · ${formatHours(monthActualMinutes)} reales`
-                : ""
-              } · ${monthHolidays} ${monthHolidays === 1 ? "festivo" : "festivos"
-              }`}
+              : `${formatHours(periodMinutes)} previstas ${periodLabel}${
+                  periodActualMinutes > 0
+                    ? ` · ${formatHours(periodActualMinutes)} reales`
+                    : ""
+                } · ${periodHolidays} ${
+                  periodHolidays === 1 ? "festivo" : "festivos"
+                }`}
           </div>
           {/* Desglose por categoría; cada etiqueta solo aparece si tiene horas */}
-          {monthClassification.total > 0 ? (
+          {periodClassification.total > 0 ? (
             <div className="flex flex-wrap justify-end gap-1.5 text-[11px]">
-              {monthClassification.normal > 0 ? (
+              {periodClassification.normal > 0 ? (
                 <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-medium">
-                  Normal {formatHours(monthClassification.normal)}
+                  Normal {formatHours(periodClassification.normal)}
                 </span>
               ) : null}
-              {monthClassification.extra > 0 ? (
+              {periodClassification.extra > 0 ? (
                 <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-medium text-sky-700 dark:text-sky-300">
-                  Extra {formatHours(monthClassification.extra)}
+                  Extra {formatHours(periodClassification.extra)}
                 </span>
               ) : null}
-              {monthClassification.holiday > 0 ? (
+              {periodClassification.holiday > 0 ? (
                 <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-medium text-amber-700 dark:text-amber-300">
-                  Festivo {formatHours(monthClassification.holiday)}
+                  Festivo {formatHours(periodClassification.holiday)}
                 </span>
               ) : null}
-              {monthClassification.holidayExtra > 0 ? (
+              {periodClassification.holidayExtra > 0 ? (
                 <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-300">
-                  Festivo-extra {formatHours(monthClassification.holidayExtra)}
+                  Festivo-extra {formatHours(periodClassification.holidayExtra)}
                 </span>
               ) : null}
             </div>
@@ -382,12 +437,14 @@ export function CalendarView() {
       </div>
 
       {/* ------------------------------------------------------------------
-          Grid mensual: una celda (botón) por día
+          Grid de días: una celda (botón) por día del mes o de la semana
           ------------------------------------------------------------------ */}
       {calendar === undefined ? (
         <p className="text-muted-foreground text-sm">Cargando calendario…</p>
       ) : (
-        <div className="grid grid-cols-7 gap-1">
+        <div
+          className={cn("grid grid-cols-7 gap-1", view === "week" && "gap-2")}
+        >
           {gridDays.map((day) => {
             // Datos de cada celda, buscados por fecha en los Map precalculados.
             const dateKey = format(day, "yyyy-MM-dd");
@@ -397,7 +454,8 @@ export function CalendarView() {
                 ? shiftsById.get(resolved.shiftTypeId)
                 : undefined;
             // Falso para los días de relleno (mes anterior/siguiente).
-            const inMonth = isSameMonth(day, month);
+            const inPeriod =
+              dateKey >= periodStartKey && dateKey <= periodEndKey;
             const dayHolidays = holidaysByDate.get(dateKey) ?? [];
             const dayEntry = timeEntriesByDate.get(dateKey);
             const overtimeMinutes = dayEntry?.overtimeMinutes ?? 0;
@@ -411,8 +469,10 @@ export function CalendarView() {
                 onClick={() => setSelectedDate(dateKey)}
                 className={cn(
                   "hover:border-ring focus-visible:ring-ring/50 flex min-h-28 flex-col gap-1 rounded-lg border p-2 text-left transition focus-visible:ring-3 focus-visible:outline-none",
+                  // La vista semanal da más altura a cada día.
+                  view === "week" && "min-h-56 p-3",
                   // Los días de relleno se atenúan.
-                  inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
+                  inPeriod ? "bg-card" : "bg-muted/30 text-muted-foreground",
                   // Hoy: anillo de color primario.
                   dateKey === todayKey && "ring-primary ring-2",
                   // Día seleccionado: borde primario.
@@ -423,9 +483,9 @@ export function CalendarView() {
                 style={
                   shift
                     ? {
-                      borderColor: shift.color,
-                      backgroundColor: `${shift.color}12`,
-                    }
+                        borderColor: shift.color,
+                        backgroundColor: `${shift.color}12`,
+                      }
                     : undefined
                 }
               >
@@ -560,7 +620,7 @@ export function CalendarView() {
       {/* Estado vacío: no hay tipos de turno o todo el rango son descansos.
           Invita a crear un patrón de turnos. */}
       {(shifts ?? []).length === 0 ||
-        calendar?.days.every((day) => day.kind === "rest") ? (
+      calendar?.days.every((day) => day.kind === "rest") ? (
         <p className="text-muted-foreground text-sm">
           Aún no hay turnos planificados.{" "}
           <Link className="underline" href="/patterns">
