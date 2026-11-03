@@ -21,8 +21,11 @@ import {
 } from "@/lib/calculations/overtime";
 import { convexErrorMessage } from "@/lib/utils/convex-error";
 
+// Tramo horario local en formato "HH:mm".
 type Interval = { start: string; end: string };
 
+// Horas extra ya guardadas para el día (todo opcional porque el día puede
+// tener solo horas reales, sin extra).
 type ExistingOvertime = {
   overtimeIntervals?: Interval[];
   overtimeMinutes?: number;
@@ -30,14 +33,20 @@ type ExistingOvertime = {
 };
 
 type DayOvertimeEditorProps = {
+  /** Fecha del día, en formato "yyyy-MM-dd". */
   date: string;
+  /** Si el día es festivo; solo cambia el aviso de cómo se contabilizan las horas. */
   isHoliday: boolean;
+  /** Turno planificado del día, si lo hay. */
   shiftTypeId?: Id<"shiftTypes">;
   shiftName?: string;
+  /** Tramos del turno, solo para mostrarlos como referencia. */
   shiftIntervals: Interval[];
+  /** Registro existente, para pre-rellenar el formulario. */
   existing?: ExistingOvertime;
 };
 
+// Estilo compartido para los campos de hora, coherente con el resto de inputs.
 const timeClassName =
   "h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
@@ -53,12 +62,16 @@ export function DayOvertimeEditor({
   shiftIntervals,
   existing,
 }: DayOvertimeEditorProps) {
+  // Mutaciones de Convex para guardar y borrar las horas extra del día.
   const saveOvertime = useMutation(api.timeEntries.saveOvertime);
   const removeOvertime = useMutation(api.timeEntries.removeOvertime);
 
+  // El interruptor empieza activado solo si ya hay tramos guardados.
   const [enabled, setEnabled] = useState(
     (existing?.overtimeIntervals?.length ?? 0) > 0,
   );
+  // Lista editable de tramos. Siempre hay al menos uno (vacío) para que el
+  // formulario nunca se quede sin filas.
   const [intervals, setIntervals] = useState<Interval[]>(
     existing?.overtimeIntervals?.length
       ? existing.overtimeIntervals
@@ -68,12 +81,15 @@ export function DayOvertimeEditor({
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Suma de minutos de todos los tramos, para mostrar el total declarado.
   const totalMinutes = intervals.reduce(
     (total, interval) => total + localIntervalMinutes(interval),
     0,
   );
+  // ¿Hay horas extra ya guardadas en el backend? Controla el botón "Quitar".
   const hasSavedOvertime = (existing?.overtimeIntervals?.length ?? 0) > 0;
 
+  /** Modifica un campo (inicio o fin) de un tramo concreto, sin mutar el estado. */
   function updateInterval(index: number, field: keyof Interval, value: string) {
     setIntervals((current) =>
       current.map((interval, currentIndex) =>
@@ -82,10 +98,15 @@ export function DayOvertimeEditor({
     );
   }
 
+  /** Añade un tramo vacío al final de la lista. */
   function addInterval() {
     setIntervals((current) => [...current, { start: "", end: "" }]);
   }
 
+  /**
+   * Elimina un tramo. Si era el último, deja uno vacío para que siempre
+   * haya al menos una fila editable.
+   */
   function removeInterval(index: number) {
     setIntervals((current) => {
       const next = current.filter((_, currentIndex) => currentIndex !== index);
@@ -93,6 +114,10 @@ export function DayOvertimeEditor({
     });
   }
 
+  /**
+   * Valida y guarda las horas extra. Se descartan los tramos incompletos
+   * (sin inicio o sin fin) y se exige al menos uno válido.
+   */
   async function save() {
     setError(null);
     const cleaned = intervals.filter(
@@ -120,10 +145,15 @@ export function DayOvertimeEditor({
         convexErrorMessage(caught, "No se pudieron guardar las horas extra."),
       );
     } finally {
+      // Se ejecuta tanto si hay éxito como si hay error.
       setIsSaving(false);
     }
   }
 
+  /**
+   * Elimina las horas extra del día y reinicia el formulario
+   * (interruptor apagado, un tramo vacío y sin notas).
+   */
   async function remove() {
     setError(null);
     setIsSaving(true);
@@ -152,6 +182,7 @@ export function DayOvertimeEditor({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {/* Horario del turno, como referencia para rellenar los tramos */}
         {shiftIntervals.length > 0 ? (
           <p className="text-muted-foreground text-xs">
             Horario del turno:{" "}
@@ -161,6 +192,7 @@ export function DayOvertimeEditor({
           </p>
         ) : null}
 
+        {/* Interruptor: el usuario indica si hubo horas extra ese día */}
         <div className="flex items-center gap-2">
           <input
             id="overtime-enabled"
@@ -176,6 +208,7 @@ export function DayOvertimeEditor({
 
         {enabled ? (
           <>
+            {/* Aviso: en festivo las horas extra se clasifican aparte */}
             {isHoliday ? (
               <p className="text-muted-foreground text-xs">
                 Este día es festivo: las horas se contabilizarán como
@@ -183,6 +216,8 @@ export function DayOvertimeEditor({
               </p>
             ) : null}
 
+            {/* Lista de tramos: inicio, fin y botón para quitar cada uno.
+                Se usa el índice como `key` porque los tramos no tienen id. */}
             <div className="flex flex-col gap-2">
               <Label>Tramos de horas extra</Label>
               {intervals.map((interval, index) => (
@@ -220,6 +255,7 @@ export function DayOvertimeEditor({
                   </Button>
                 </div>
               ))}
+              {/* Límite de 4 tramos por día */}
               <Button
                 type="button"
                 variant="outline"
@@ -244,12 +280,15 @@ export function DayOvertimeEditor({
               />
             </div>
 
+            {/* Error de validación o del backend; `role="alert"` para lectores de pantalla */}
             {error ? (
               <p className="text-destructive text-sm" role="alert">
                 {error}
               </p>
             ) : null}
 
+            {/* Acciones: se bloquean mientras hay una petición en curso.
+                "Quitar" solo aparece si ya hay horas extra guardadas. */}
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -274,6 +313,9 @@ export function DayOvertimeEditor({
           </>
         ) : (
           <>
+            {/* Interruptor apagado: si hay extra guardada se muestra el total
+                declarado con opción de quitarla (así se puede borrar sin
+                tener que reactivar el formulario); si no, un mensaje. */}
             {hasSavedOvertime ? (
               <div className="flex flex-col gap-2">
                 <p className="text-sm">
@@ -295,6 +337,7 @@ export function DayOvertimeEditor({
                 Sin horas extra declaradas.
               </p>
             )}
+            {/* El error también se muestra en esta rama, por si falla "Quitar" */}
             {error ? (
               <p className="text-destructive text-sm" role="alert">
                 {error}
