@@ -25,6 +25,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import {
+  classifyDayMinutes,
+  sumClassifiedMinutes,
+} from "@/lib/calculations/classification";
 import { formatHours } from "@/lib/calculations/overtime";
 import { DayActualEditor } from "./DayActualEditor";
 import { DayHolidayEditor } from "./DayHolidayEditor";
@@ -130,15 +134,18 @@ export function CalendarView() {
   const monthActualMinutes = (timeEntries ?? [])
     .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
     .reduce((total, entry) => total + actualMinutesOf(entry), 0);
-  const monthOvertimeMinutes = (timeEntries ?? [])
-    .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
-    .reduce((total, entry) => total + (entry.overtimeMinutes ?? 0), 0);
-  const monthOvertimeDays = (timeEntries ?? []).filter(
-    (entry) =>
-      entry.date >= monthStart &&
-      entry.date <= monthEnd &&
-      (entry.overtimeMinutes ?? 0) > 0,
-  ).length;
+  const monthClassification = sumClassifiedMinutes(
+    (timeEntries ?? [])
+      .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
+      .map((entry) =>
+        classifyDayMinutes({
+          actualMinutes: actualMinutesOf(entry),
+          overtimeMinutes: entry.overtimeMinutes ?? 0,
+          isHoliday: holidaysByDate.has(entry.date),
+          isExtraDay: overridesByDate.get(entry.date)?.kind === "extra",
+        }),
+      ),
+  );
   // Total de minutos planificados en el mes (excluye los días fuera del mes
   // que aparecen en el grid para completar semanas).
   const monthMinutes = (calendar?.days ?? [])
@@ -202,22 +209,42 @@ export function CalendarView() {
             Hoy
           </Button>
         </div>
-        <div className="text-muted-foreground text-sm">
-          {calendar === undefined
-            ? "Calculando…"
-            : `${formatHours(monthMinutes)} previstas este mes${
-                monthActualMinutes > 0
-                  ? ` · ${formatHours(monthActualMinutes)} reales`
-                  : ""
-              } · ${monthHolidays} ${
-                monthHolidays === 1 ? "festivo" : "festivos"
-              }${
-                monthOvertimeMinutes > 0
-                  ? ` · ${formatHours(monthOvertimeMinutes)} extra en ${monthOvertimeDays} ${
-                      monthOvertimeDays === 1 ? "día" : "días"
-                    }`
-                  : ""
-              }`}
+        <div className="flex flex-col items-end gap-2">
+          <div className="text-muted-foreground text-sm">
+            {calendar === undefined
+              ? "Calculando…"
+              : `${formatHours(monthMinutes)} previstas este mes${
+                  monthActualMinutes > 0
+                    ? ` · ${formatHours(monthActualMinutes)} reales`
+                    : ""
+                } · ${monthHolidays} ${
+                  monthHolidays === 1 ? "festivo" : "festivos"
+                }`}
+          </div>
+          {monthClassification.total > 0 ? (
+            <div className="flex flex-wrap justify-end gap-1.5 text-[11px]">
+              {monthClassification.normal > 0 ? (
+                <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-medium">
+                  Normal {formatHours(monthClassification.normal)}
+                </span>
+              ) : null}
+              {monthClassification.extra > 0 ? (
+                <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-medium text-sky-700 dark:text-sky-300">
+                  Extra {formatHours(monthClassification.extra)}
+                </span>
+              ) : null}
+              {monthClassification.holiday > 0 ? (
+                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-medium text-amber-700 dark:text-amber-300">
+                  Festivo {formatHours(monthClassification.holiday)}
+                </span>
+              ) : null}
+              {monthClassification.holidayExtra > 0 ? (
+                <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-300">
+                  Festivo-extra {formatHours(monthClassification.holidayExtra)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 

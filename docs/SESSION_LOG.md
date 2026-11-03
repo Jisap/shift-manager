@@ -17,3 +17,4 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-02 18:15 | opencode (deepseek-v4.1)   | Gestión manual de festivos en el calendario + base para contar festivos trabajados | [sessions/2026-11-02-1815-opencode.md](sessions/2026-11-02-1815-opencode.md) |
 | 2026-11-02 18:25 | opencode (deepseek-v4.1)   | Declaración explícita de horas extra por turno con tramos y total | [sessions/2026-11-02-1825-opencode.md](sessions/2026-11-02-1825-opencode.md) |
 | 2026-11-03 10:46 | opencode (deepseek-v4.1)   | Registro de horas reales con pausas y comparación con lo previsto     | [sessions/2026-11-03-1046-opencode.md](sessions/2026-11-03-1046-opencode.md) |
+| 2026-11-03 11:06 | opencode (deepseek-v4.1)   | Clasificación y conteo mensual de horas por categoría                 | [sessions/2026-11-03-1106-opencode.md](sessions/2026-11-03-1106-opencode.md) |

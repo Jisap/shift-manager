@@ -144,6 +144,9 @@ Las tablas de autenticación las define `@convex-dev/auth` (usuarios, sesiones, 
 - `expectedMinutes` es una instantánea para no alterar el histórico.
 - Las horas extra son explícitas: el usuario las declara con sus tramos `HH:mm`;
   el backend calcula `overtimeMinutes` con la zona horaria del usuario.
+- La clasificación (normal, extra, festivo, festivo-extra) es derivada y no se
+  persiste: se calcula al leer con los festivos del día y las excepciones `extra`.
+  Las categorías son mutuamente excluyentes y no aplican recargos económicos.
 
 ### holidays
 

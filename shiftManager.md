@@ -1058,6 +1058,7 @@ Reglas:
 - `actualEnd > actualStart` cuando se registran horas reales.
 - `expectedMinutes` se congela para que el histórico no cambie si el patrón se edita después.
 - Las horas extra son explícitas: el usuario declara si las hizo, cuántos tramos y en qué horario. El backend calcula `overtimeMinutes` con la zona horaria del usuario.
+- La clasificación de horas (normal, extra, festivo, festivo-extra) es derivada al leer, mutuamente excluyente y sin recargos económicos.
 
 ## 7.7. Holiday
 

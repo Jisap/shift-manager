@@ -72,7 +72,7 @@ Aceptación: calendario legible y editable; una excepción por fecha.
 - [x] `expectedMinutes` como instantánea.
 - [x] Registros sin turno planificado.
 - [x] Declarar horas extra por día sobre el turno planificado: tramos, horario y total calculado.
-- [ ] Clasificar horas reales (normal, extra, festivo, festivo-extra) y contarlas, sin multiplicadores económicos.
+- [x] Clasificar horas reales (normal, extra, festivo, festivo-extra) y contarlas, sin multiplicadores económicos.
 - [x] Tests de cálculos y DST.
 
 Aceptación: comparación fiable previsto/real.
