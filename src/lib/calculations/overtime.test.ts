@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  actualMinutesForInterval,
   formatHours,
   localIntervalMinutes,
   overtimeMinutesForIntervals,
@@ -52,5 +53,39 @@ describe("overtimeMinutesForIntervals", () => {
       timezone,
     );
     expect(minutes).toBe(120);
+  });
+});
+
+describe("actualMinutesForInterval", () => {
+  const timezone = "Europe/Madrid";
+
+  it("descuenta las pausas del tiempo trabajado", () => {
+    expect(
+      actualMinutesForInterval("2026-11-02", "08:00", "16:00", 30, timezone),
+    ).toBe(450);
+  });
+
+  it("nunca devuelve minutos negativos", () => {
+    expect(
+      actualMinutesForInterval("2026-11-02", "08:00", "09:00", 120, timezone),
+    ).toBe(0);
+  });
+
+  it("cruza medianoche respetando el día de salida", () => {
+    expect(
+      actualMinutesForInterval("2026-11-02", "22:00", "06:00", 0, timezone),
+    ).toBe(480);
+  });
+
+  it("respeta el cambio de horario de primavera", () => {
+    expect(
+      actualMinutesForInterval("2026-03-28", "22:00", "06:00", 0, timezone),
+    ).toBe(420);
+  });
+
+  it("respeta el cambio de horario de otoño", () => {
+    expect(
+      actualMinutesForInterval("2026-10-24", "22:00", "06:00", 0, timezone),
+    ).toBe(540);
   });
 });

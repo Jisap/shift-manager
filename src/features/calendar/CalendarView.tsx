@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatHours } from "@/lib/calculations/overtime";
+import { DayActualEditor } from "./DayActualEditor";
 import { DayHolidayEditor } from "./DayHolidayEditor";
 import { DayOvertimeEditor } from "./DayOvertimeEditor";
 import { DayOverrideEditor } from "./DayOverrideEditor";
@@ -70,8 +71,7 @@ export function CalendarView() {
   // Los datos de Convex llegan como arrays; los convertimos a Map para
   // acceso O(1) por id/fecha en el render del grid.
   const shiftsById = useMemo(
-    () =>
-      new Map((shifts ?? []).map((shift) => [String(shift._id), shift])),
+    () => new Map((shifts ?? []).map((shift) => [String(shift._id), shift])),
     [shifts],
   );
   const daysByDate = useMemo(
@@ -79,7 +79,8 @@ export function CalendarView() {
     [calendar],
   );
   const overridesByDate = useMemo(
-    () => new Map((overrides ?? []).map((override) => [override.date, override])),
+    () =>
+      new Map((overrides ?? []).map((override) => [override.date, override])),
     [overrides],
   );
   // La excepción del día seleccionado se pasa al editor para pre-rellenar el formulario.
@@ -107,12 +108,28 @@ export function CalendarView() {
     (holiday) => holiday.date >= monthStart && holiday.date <= monthEnd,
   ).length;
   const timeEntriesByDate = useMemo(
-    () =>
-      new Map((timeEntries ?? []).map((entry) => [entry.date, entry])),
+    () => new Map((timeEntries ?? []).map((entry) => [entry.date, entry])),
     [timeEntries],
   );
   const selectedOvertime =
     selectedDate === null ? undefined : timeEntriesByDate.get(selectedDate);
+  const actualMinutesOf = (entry: {
+    actualStart?: number;
+    actualEnd?: number;
+    breakMinutes: number;
+  }): number => {
+    if (entry.actualStart === undefined || entry.actualEnd === undefined) {
+      return 0;
+    }
+    return Math.max(
+      0,
+      Math.round((entry.actualEnd - entry.actualStart) / 60000) -
+        entry.breakMinutes,
+    );
+  };
+  const monthActualMinutes = (timeEntries ?? [])
+    .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
+    .reduce((total, entry) => total + actualMinutesOf(entry), 0);
   const monthOvertimeMinutes = (timeEntries ?? [])
     .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
     .reduce((total, entry) => total + (entry.overtimeMinutes ?? 0), 0);
@@ -188,7 +205,11 @@ export function CalendarView() {
         <div className="text-muted-foreground text-sm">
           {calendar === undefined
             ? "Calculando…"
-            : `${formatHours(monthMinutes)} previstas este mes · ${monthHolidays} ${
+            : `${formatHours(monthMinutes)} previstas este mes${
+                monthActualMinutes > 0
+                  ? ` · ${formatHours(monthActualMinutes)} reales`
+                  : ""
+              } · ${monthHolidays} ${
                 monthHolidays === 1 ? "festivo" : "festivos"
               }${
                 monthOvertimeMinutes > 0
@@ -203,13 +224,22 @@ export function CalendarView() {
       {selectedDate ? (
         // La `key` incluye el id de la excepción (o "new") para que React
         // destruya y recree el editor al cambiar de día o al guardar/eliminar.
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <DayOverrideEditor
             key={`${selectedDate}-${selectedOverride?._id ?? "new"}`}
             date={selectedDate}
             shifts={shifts ?? []}
             existing={selectedOverride}
             onClose={() => setSelectedDate(null)}
+          />
+          <DayActualEditor
+            key={`${selectedDate}-actual-${selectedOvertime?.actualStart ?? "none"}-${selectedOvertime?.actualEnd ?? "none"}`}
+            date={selectedDate}
+            timezone={calendar?.timezone ?? "Europe/Madrid"}
+            plannedMinutes={selectedResolved?.plannedMinutes ?? 0}
+            shiftTypeId={selectedShift?._id}
+            shiftIntervals={selectedResolved?.intervals ?? []}
+            existing={selectedOvertime}
           />
           <DayOvertimeEditor
             key={`${selectedDate}-${selectedOvertime?.overtimeMinutes ?? "none"}`}
@@ -249,8 +279,9 @@ export function CalendarView() {
                 : undefined;
             const inMonth = isSameMonth(day, month);
             const dayHolidays = holidaysByDate.get(dateKey) ?? [];
-            const overtimeMinutes =
-              timeEntriesByDate.get(dateKey)?.overtimeMinutes ?? 0;
+            const dayEntry = timeEntriesByDate.get(dateKey);
+            const overtimeMinutes = dayEntry?.overtimeMinutes ?? 0;
+            const actualMinutes = dayEntry ? actualMinutesOf(dayEntry) : 0;
 
             return (
               <button
@@ -259,7 +290,7 @@ export function CalendarView() {
                 aria-pressed={selectedDate === dateKey}
                 onClick={() => setSelectedDate(dateKey)}
                 className={cn(
-                  "flex min-h-28 flex-col gap-1 rounded-lg border p-2 text-left transition hover:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
+                  "hover:border-ring focus-visible:ring-ring/50 flex min-h-28 flex-col gap-1 rounded-lg border p-2 text-left transition focus-visible:ring-3 focus-visible:outline-none",
                   inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
                   dateKey === todayKey && "ring-primary ring-2",
                   selectedDate === dateKey && "border-primary",
@@ -294,7 +325,7 @@ export function CalendarView() {
                     {dayHolidays.map((holiday) => (
                       <span
                         key={holiday._id}
-                        className="bg-amber-500/15 text-amber-700 dark:text-amber-300 rounded px-1 text-[10px] font-medium"
+                        className="rounded bg-amber-500/15 px-1 text-[10px] font-medium text-amber-700 dark:text-amber-300"
                       >
                         {holiday.name}
                       </span>
@@ -302,8 +333,14 @@ export function CalendarView() {
                   </span>
                 ) : null}
 
+                {actualMinutes > 0 ? (
+                  <span className="self-start rounded bg-emerald-500/15 px-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                    Real {formatHours(actualMinutes)}
+                  </span>
+                ) : null}
+
                 {overtimeMinutes > 0 ? (
-                  <span className="bg-sky-500/15 text-sky-700 dark:text-sky-300 self-start rounded px-1 text-[10px] font-medium">
+                  <span className="self-start rounded bg-sky-500/15 px-1 text-[10px] font-medium text-sky-700 dark:text-sky-300">
                     +{formatHours(overtimeMinutes)} extra
                     {dayHolidays.length > 0 ? " · festivo" : ""}
                   </span>
@@ -348,7 +385,9 @@ export function CalendarView() {
       )}
 
       <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
-        <span>Pulsa un día para añadir o quitar una excepción o un festivo.</span>
+        <span>
+          Pulsa un día para editar excepciones, horas reales, extra o festivos.
+        </span>
         {(shifts ?? []).map((shift) => (
           <span key={shift._id} className="flex items-center gap-1">
             <span
@@ -367,11 +406,15 @@ export function CalendarView() {
           Descanso
         </span>
         <span className="flex items-center gap-1">
+          <span className="size-2.5 rounded-full bg-amber-500/60" aria-hidden />
+          Festivo
+        </span>
+        <span className="flex items-center gap-1">
           <span
-            className="size-2.5 rounded-full bg-amber-500/60"
+            className="size-2.5 rounded-full bg-emerald-500/60"
             aria-hidden
           />
-          Festivo
+          Horas reales
         </span>
         <span className="flex items-center gap-1">
           <span className="size-2.5 rounded-full bg-sky-500/60" aria-hidden />

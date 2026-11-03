@@ -48,3 +48,19 @@ export function overtimeMinutesForIntervals(
   }, 0);
   return Math.round(total / MILLISECONDS_PER_MINUTE);
 }
+
+/**
+ * Minutos netos trabajados en un tramo real, descontando las pausas.
+ * La duración bruta respeta DST al calcularse con instantes absolutos.
+ */
+export function actualMinutesForInterval(
+  date: string,
+  start: string,
+  end: string,
+  breakMinutes: number,
+  timezone: string,
+): number {
+  const gross = overtimeMinutesForIntervals(date, [{ start, end }], timezone);
+  const breaks = Number.isFinite(breakMinutes) ? Math.max(0, breakMinutes) : 0;
+  return Math.max(0, gross - breaks);
+}

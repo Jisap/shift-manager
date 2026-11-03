@@ -80,6 +80,22 @@ export function isValidLocalTime(value: string): boolean {
 }
 
 /**
+ * Formatea un instante absoluto (epoch ms UTC) como hora local `HH:mm`
+ * en la zona horaria indicada.
+ */
+export function instantToLocalTime(instant: number, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(instant));
+  const get = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("hour")}:${get("minute")}`;
+}
+
+/**
  * Determina si dos periodos de fecha se solapan.
  * Un extremo `undefined` se interpreta como infinito (`9999-12-31`).
  * Periodos con `end < start` se consideran inválidos y no solapan.

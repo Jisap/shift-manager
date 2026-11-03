@@ -67,13 +67,13 @@ Aceptación: calendario legible y editable; una excepción por fecha.
 
 ## Fase 5 — Registro de horas
 
-- [ ] Registrar entrada, salida y pausas reales.
-- [ ] Calcular horas reales y compararlas con las previstas.
-- [ ] `expectedMinutes` como instantánea.
-- [ ] Registros sin turno planificado.
+- [x] Registrar entrada, salida y pausas reales.
+- [x] Calcular horas reales y compararlas con las previstas.
+- [x] `expectedMinutes` como instantánea.
+- [x] Registros sin turno planificado.
 - [x] Declarar horas extra por día sobre el turno planificado: tramos, horario y total calculado.
 - [ ] Clasificar horas reales (normal, extra, festivo, festivo-extra) y contarlas, sin multiplicadores económicos.
-- [ ] Tests de cálculos y DST.
+- [x] Tests de cálculos y DST.
 
 Aceptación: comparación fiable previsto/real.
 

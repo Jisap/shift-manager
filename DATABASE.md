@@ -139,6 +139,8 @@ Las tablas de autenticación las define `@convex-dev/auth` (usuarios, sesiones, 
 - No referencia `ScheduledShift`: el calendario es derivado.
 - Puede existir sin turno planificado.
 - `actualEnd > actualStart` cuando se registran horas reales.
+- `intervals` guarda el tramo real como instantes UTC; `breakMinutes` descuenta las pausas.
+- Los minutos reales netos se calculan como `actualEnd - actualStart - breakMinutes`.
 - `expectedMinutes` es una instantánea para no alterar el histórico.
 - Las horas extra son explícitas: el usuario las declara con sus tramos `HH:mm`;
   el backend calcula `overtimeMinutes` con la zona horaria del usuario.

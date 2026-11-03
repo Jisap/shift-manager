@@ -139,7 +139,11 @@ function validateOvertimeIntervals(
   for (let index = 1; index < instants.length; index += 1) {
     const previous = instants[index - 1];
     const current = instants[index];
-    if (previous !== undefined && current !== undefined && current.start < previous.end) {
+    if (
+      previous !== undefined &&
+      current !== undefined &&
+      current.start < previous.end
+    ) {
       throw new ConvexError({
         code: "VALIDATION_ERROR",
         message: "Los tramos de horas extra no pueden solaparse",
@@ -148,8 +152,10 @@ function validateOvertimeIntervals(
   }
 
   const totalMinutes = Math.round(
-    instants.reduce((total, interval) => total + interval.end - interval.start, 0) /
-      MILLISECONDS_PER_MINUTE,
+    instants.reduce(
+      (total, interval) => total + interval.end - interval.start,
+      0,
+    ) / MILLISECONDS_PER_MINUTE,
   );
   if (totalMinutes > MAX_OVERTIME_MINUTES) {
     throw new ConvexError({
@@ -264,6 +270,170 @@ export const saveOvertime = mutation({
 });
 
 /**
+ * Guarda o actualiza las horas realmente trabajadas de una fecha.
+ * El tramo local se convierte a instantes UTC y se guarda junto con la pausa
+ * y la instantánea de minutos previstos.
+ */
+export const saveActual = mutation({
+  args: {
+    date: v.string(),
+    start: v.string(),
+    end: v.string(),
+    breakMinutes: v.number(),
+    shiftTypeId: v.optional(v.id("shiftTypes")),
+    expectedMinutes: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    if (!isValidLocalDate(args.date)) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "La fecha no es válida",
+      });
+    }
+    if (!isValidLocalTime(args.start) || !isValidLocalTime(args.end)) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "Las horas deben usar el formato HH:mm",
+      });
+    }
+    if (args.start === args.end) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "La entrada y la salida no pueden coincidir",
+      });
+    }
+    if (
+      !Number.isInteger(args.breakMinutes) ||
+      args.breakMinutes < 0 ||
+      args.breakMinutes > MAX_OVERTIME_MINUTES
+    ) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "Las pausas deben ser minutos enteros entre 0 y 1440",
+      });
+    }
+    if (
+      args.expectedMinutes !== undefined &&
+      (!Number.isInteger(args.expectedMinutes) || args.expectedMinutes < 0)
+    ) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "Los minutos previstos no son válidos",
+      });
+    }
+
+    const timezone = await userTimezone(ctx, userId);
+    const [instants] = intervalsToInstants(
+      args.date,
+      [{ start: args.start, end: args.end }],
+      timezone,
+    );
+    if (instants === undefined) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "El tramo indicado no es válido",
+      });
+    }
+
+    const grossMinutes = Math.round(
+      (instants.end - instants.start) / MILLISECONDS_PER_MINUTE,
+    );
+    if (args.breakMinutes > grossMinutes) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message:
+          "Las pausas no pueden superar el tiempo entre entrada y salida",
+      });
+    }
+
+    const notes = validateNotes(args.notes);
+    const shiftTypeId =
+      args.shiftTypeId === undefined
+        ? undefined
+        : await validateShift(ctx, userId, args.shiftTypeId);
+
+    const existing = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_user_date", (q) =>
+        q.eq("userId", userId).eq("date", args.date),
+      )
+      .unique();
+
+    const payload = {
+      actualStart: instants.start,
+      actualEnd: instants.end,
+      intervals: [instants],
+      breakMinutes: args.breakMinutes,
+      expectedMinutes: args.expectedMinutes,
+      shiftTypeId,
+      notes,
+      updatedAt: Date.now(),
+    };
+
+    if (existing !== null) {
+      await ctx.db.patch(existing._id, payload);
+      return existing._id;
+    }
+
+    return await ctx.db.insert("timeEntries", {
+      userId,
+      date: args.date,
+      ...payload,
+    });
+  },
+});
+
+/**
+ * Elimina las horas reales de una fecha. Si el registro solo contenía horas
+ * reales, se borra la fila completa; si también tiene horas extra, solo se
+ * limpian los campos reales.
+ */
+export const removeActual = mutation({
+  args: { date: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    if (!isValidLocalDate(args.date)) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "La fecha no es válida",
+      });
+    }
+
+    const existing = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_user_date", (q) =>
+        q.eq("userId", userId).eq("date", args.date),
+      )
+      .unique();
+    if (existing === null || existing.actualStart === undefined) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "No hay horas reales para esa fecha",
+      });
+    }
+
+    const hasOvertime =
+      (existing.overtimeIntervals?.length ?? 0) > 0 ||
+      existing.overtimeMinutes !== undefined;
+    if (!hasOvertime) {
+      await ctx.db.delete(existing._id);
+      return;
+    }
+
+    await ctx.db.patch(existing._id, {
+      actualStart: undefined,
+      actualEnd: undefined,
+      intervals: undefined,
+      breakMinutes: 0,
+      expectedMinutes: undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
  * Elimina las horas extra declaradas de una fecha. Si el registro solo contenía
  * horas extra, se borra la fila completa; si en el futuro tiene horas reales,
  * solo se limpian los campos de horas extra.
@@ -292,7 +462,10 @@ export const removeOvertime = mutation({
       });
     }
 
-    if (existing.actualStart === undefined && existing.actualEnd === undefined) {
+    if (
+      existing.actualStart === undefined &&
+      existing.actualEnd === undefined
+    ) {
       await ctx.db.delete(existing._id);
       return;
     }
