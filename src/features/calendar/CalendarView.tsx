@@ -1,5 +1,19 @@
 "use client";
 
+/**
+ * CalendarView
+ * ----------------------------------------------------------------------------
+ * Vista mensual del calendario de turnos. Muestra, para cada día del mes:
+ *   - el turno planificado (o "Descanso"),
+ *   - festivos,
+ *   - horas reales trabajadas,
+ *   - horas extra,
+ *   - cambios puntuales (excepciones/overrides) y sus notas.
+ *
+ * Al pulsar un día se abre un panel con cuatro editores (excepción, horas
+ * reales, horas extra y festivos). Los datos vienen de Convex en tiempo real.
+ */
+
 import { useConvexAuth, useQuery } from "convex/react";
 import {
   addMonths,
@@ -35,27 +49,52 @@ import { DayHolidayEditor } from "./DayHolidayEditor";
 import { DayOvertimeEditor } from "./DayOvertimeEditor";
 import { DayOverrideEditor } from "./DayOverrideEditor";
 
+// Cabecera de columnas del grid. El orden empieza en lunes, igual que
+// `weekStartsOn: 1` en las funciones de date-fns más abajo.
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 export function CalendarView() {
+  // --------------------------------------------------------------------------
+  // Estado y autenticación
+  // --------------------------------------------------------------------------
+
+  // Estado de la sesión de Convex. Sin sesión no se lanzan las queries.
   const { isAuthenticated, isLoading } = useConvexAuth();
+  // Primer día del mes que se está visualizando.
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  // Fecha seleccionada ("yyyy-MM-dd") o null si no hay ninguna.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // --------------------------------------------------------------------------
+  // Rangos de fechas
+  // --------------------------------------------------------------------------
 
   // El grid de la vista mensual necesita días de la semana anterior/siguiente
   // para completar filas completas (lunes como primer día de semana).
   const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
   const gridEnd = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
+  // Rango completo del grid (incluye días de relleno de otros meses).
+  // Es el que se pide al backend.
   const startDate = format(gridStart, "yyyy-MM-dd");
   const endDate = format(gridEnd, "yyyy-MM-dd");
+  // Rango estricto del mes: se usa para los totales, que no deben contar
+  // los días de relleno.
   const monthStart = format(startOfMonth(month), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(month), "yyyy-MM-dd");
+  // Clave de hoy, para resaltarlo en el grid.
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
+  // --------------------------------------------------------------------------
+  // Consultas a Convex
+  // --------------------------------------------------------------------------
+  // Se usa "skip" mientras no hay sesión para no lanzar queries no autorizadas.
+
+  // Calendario resuelto por el motor (turno, intervalos, minutos planificados...).
   const calendar = useQuery(
     api.calendar.getRange,
     isAuthenticated ? { startDate, endDate } : "skip",
   );
+  // Tipos de turno del usuario (nombre y color).
   const shifts = useQuery(api.shiftTypes.list, isAuthenticated ? {} : "skip");
   // `overrides` se carga en paralelo al calendario para poder leer notas
   // y el estado de excepción activa sin esperar a que el motor las resuelva.
@@ -63,14 +102,20 @@ export function CalendarView() {
     api.overrides.listRange,
     isAuthenticated ? { startDate, endDate } : "skip",
   );
+  // Festivos del rango.
   const holidays = useQuery(
     api.holidays.listRange,
     isAuthenticated ? { startDate, endDate } : "skip",
   );
+  // Registros de horas reales y horas extra por día.
   const timeEntries = useQuery(
     api.timeEntries.listRange,
     isAuthenticated ? { startDate, endDate } : "skip",
   );
+
+  // --------------------------------------------------------------------------
+  // Índices derivados (arrays -> Map)
+  // --------------------------------------------------------------------------
 
   // Los datos de Convex llegan como arrays; los convertimos a Map para
   // acceso O(1) por id/fecha en el render del grid.
@@ -90,6 +135,8 @@ export function CalendarView() {
   // La excepción del día seleccionado se pasa al editor para pre-rellenar el formulario.
   const selectedOverride =
     selectedDate === null ? undefined : overridesByDate.get(selectedDate);
+  // Un mismo día puede tener varios festivos (p. ej. nacional + local),
+  // por eso el Map guarda una lista por fecha.
   const holidaysByDate = useMemo(() => {
     type HolidayList = NonNullable<typeof holidays>;
     const map = new Map<string, HolidayList>();
@@ -100,14 +147,22 @@ export function CalendarView() {
     }
     return map;
   }, [holidays]);
+
+  // --------------------------------------------------------------------------
+  // Datos del día seleccionado (se pasan a los editores)
+  // --------------------------------------------------------------------------
+
   const selectedHolidays =
     selectedDate === null ? [] : (holidaysByDate.get(selectedDate) ?? []);
+  // Día tal como lo resolvió el motor (turno, intervalos, minutos previstos).
   const selectedResolved =
     selectedDate === null ? undefined : daysByDate.get(selectedDate);
+  // Tipo de turno asignado al día seleccionado, si lo hay.
   const selectedShift =
     selectedResolved?.shiftTypeId !== undefined
       ? shiftsById.get(selectedResolved.shiftTypeId)
       : undefined;
+  // Número de festivos dentro del mes (excluye los del relleno del grid).
   const monthHolidays = (holidays ?? []).filter(
     (holiday) => holiday.date >= monthStart && holiday.date <= monthEnd,
   ).length;
@@ -115,8 +170,17 @@ export function CalendarView() {
     () => new Map((timeEntries ?? []).map((entry) => [entry.date, entry])),
     [timeEntries],
   );
+  // Registro de horas (reales/extra) del día seleccionado.
   const selectedOvertime =
     selectedDate === null ? undefined : timeEntriesByDate.get(selectedDate);
+
+  // --------------------------------------------------------------------------
+  // Cálculo de minutos reales y totales del mes
+  // --------------------------------------------------------------------------
+
+  // Minutos realmente trabajados en un registro: (fin - inicio) - descanso.
+  // `actualStart`/`actualEnd` son timestamps en milisegundos. Si falta alguno
+  // devuelve 0, y nunca devuelve valores negativos.
   const actualMinutesOf = (entry: {
     actualStart?: number;
     actualEnd?: number;
@@ -128,12 +192,16 @@ export function CalendarView() {
     return Math.max(
       0,
       Math.round((entry.actualEnd - entry.actualStart) / 60000) -
-        entry.breakMinutes,
+      entry.breakMinutes,
     );
   };
+  // Total de minutos reales del mes.
   const monthActualMinutes = (timeEntries ?? [])
     .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
     .reduce((total, entry) => total + actualMinutesOf(entry), 0);
+  // Desglose del mes por categoría (normal / extra / festivo / festivo-extra).
+  // Cada día se clasifica según sus minutos reales, sus minutos extra y si es
+  // festivo o día extra (excepción de tipo "extra"); luego se suman.
   const monthClassification = sumClassifiedMinutes(
     (timeEntries ?? [])
       .filter((entry) => entry.date >= monthStart && entry.date <= monthEnd)
@@ -151,7 +219,12 @@ export function CalendarView() {
   const monthMinutes = (calendar?.days ?? [])
     .filter((day) => day.date >= monthStart && day.date <= monthEnd)
     .reduce((total, day) => total + day.plannedMinutes, 0);
+  // Todos los días que se pintan en el grid (incluye relleno).
   const gridDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
+
+  // --------------------------------------------------------------------------
+  // Estados tempranos: cargando y sin sesión
+  // --------------------------------------------------------------------------
 
   if (isLoading) {
     return <p className="text-muted-foreground text-sm">Cargando…</p>;
@@ -177,7 +250,11 @@ export function CalendarView() {
 
   return (
     <div className="flex w-full flex-col gap-6">
+      {/* ------------------------------------------------------------------
+          Cabecera: navegación de mes + resumen de horas del mes
+          ------------------------------------------------------------------ */}
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Navegación: mes anterior / título / mes siguiente / volver a hoy */}
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -209,18 +286,18 @@ export function CalendarView() {
             Hoy
           </Button>
         </div>
+        {/* Resumen del mes: horas previstas, reales (si hay) y festivos */}
         <div className="flex flex-col items-end gap-2">
           <div className="text-muted-foreground text-sm">
             {calendar === undefined
               ? "Calculando…"
-              : `${formatHours(monthMinutes)} previstas este mes${
-                  monthActualMinutes > 0
-                    ? ` · ${formatHours(monthActualMinutes)} reales`
-                    : ""
-                } · ${monthHolidays} ${
-                  monthHolidays === 1 ? "festivo" : "festivos"
-                }`}
+              : `${formatHours(monthMinutes)} previstas este mes${monthActualMinutes > 0
+                ? ` · ${formatHours(monthActualMinutes)} reales`
+                : ""
+              } · ${monthHolidays} ${monthHolidays === 1 ? "festivo" : "festivos"
+              }`}
           </div>
+          {/* Desglose por categoría; cada etiqueta solo aparece si tiene horas */}
           {monthClassification.total > 0 ? (
             <div className="flex flex-wrap justify-end gap-1.5 text-[11px]">
               {monthClassification.normal > 0 ? (
@@ -248,10 +325,14 @@ export function CalendarView() {
         </div>
       </div>
 
+      {/* ------------------------------------------------------------------
+          Panel de edición del día seleccionado (cuatro editores)
+          ------------------------------------------------------------------ */}
       {selectedDate ? (
         // La `key` incluye el id de la excepción (o "new") para que React
         // destruya y recree el editor al cambiar de día o al guardar/eliminar.
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {/* Cambio puntual de turno (excepción) para este día */}
           <DayOverrideEditor
             key={`${selectedDate}-${selectedOverride?._id ?? "new"}`}
             date={selectedDate}
@@ -259,6 +340,8 @@ export function CalendarView() {
             existing={selectedOverride}
             onClose={() => setSelectedDate(null)}
           />
+          {/* Horas reales de entrada/salida y descanso. La key depende de
+              inicio/fin para reiniciar el formulario cuando cambian. */}
           <DayActualEditor
             key={`${selectedDate}-actual-${selectedOvertime?.actualStart ?? "none"}-${selectedOvertime?.actualEnd ?? "none"}`}
             date={selectedDate}
@@ -268,6 +351,7 @@ export function CalendarView() {
             shiftIntervals={selectedResolved?.intervals ?? []}
             existing={selectedOvertime}
           />
+          {/* Horas extra del día */}
           <DayOvertimeEditor
             key={`${selectedDate}-${selectedOvertime?.overtimeMinutes ?? "none"}`}
             date={selectedDate}
@@ -277,6 +361,7 @@ export function CalendarView() {
             shiftIntervals={selectedResolved?.intervals ?? []}
             existing={selectedOvertime}
           />
+          {/* Alta/baja de festivos del día. La key cambia con el nº de festivos. */}
           <DayHolidayEditor
             key={`${selectedDate}-holidays-${selectedHolidays.length}`}
             date={selectedDate}
@@ -285,6 +370,9 @@ export function CalendarView() {
         </div>
       ) : null}
 
+      {/* ------------------------------------------------------------------
+          Cabecera de días de la semana
+          ------------------------------------------------------------------ */}
       <div className="text-muted-foreground grid grid-cols-7 gap-1 text-center text-xs font-medium">
         {WEEKDAYS.map((weekday) => (
           <div key={weekday} className="py-1">
@@ -293,17 +381,22 @@ export function CalendarView() {
         ))}
       </div>
 
+      {/* ------------------------------------------------------------------
+          Grid mensual: una celda (botón) por día
+          ------------------------------------------------------------------ */}
       {calendar === undefined ? (
         <p className="text-muted-foreground text-sm">Cargando calendario…</p>
       ) : (
         <div className="grid grid-cols-7 gap-1">
           {gridDays.map((day) => {
+            // Datos de cada celda, buscados por fecha en los Map precalculados.
             const dateKey = format(day, "yyyy-MM-dd");
             const resolved = daysByDate.get(dateKey);
             const shift =
               resolved?.shiftTypeId !== undefined
                 ? shiftsById.get(resolved.shiftTypeId)
                 : undefined;
+            // Falso para los días de relleno (mes anterior/siguiente).
             const inMonth = isSameMonth(day, month);
             const dayHolidays = holidaysByDate.get(dateKey) ?? [];
             const dayEntry = timeEntriesByDate.get(dateKey);
@@ -318,19 +411,25 @@ export function CalendarView() {
                 onClick={() => setSelectedDate(dateKey)}
                 className={cn(
                   "hover:border-ring focus-visible:ring-ring/50 flex min-h-28 flex-col gap-1 rounded-lg border p-2 text-left transition focus-visible:ring-3 focus-visible:outline-none",
+                  // Los días de relleno se atenúan.
                   inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
+                  // Hoy: anillo de color primario.
                   dateKey === todayKey && "ring-primary ring-2",
+                  // Día seleccionado: borde primario.
                   selectedDate === dateKey && "border-primary",
                 )}
+                // Si hay turno, el borde y un fondo muy tenue (sufijo hex "12"
+                // = ~7% de opacidad) toman el color del turno.
                 style={
                   shift
                     ? {
-                        borderColor: shift.color,
-                        backgroundColor: `${shift.color}12`,
-                      }
+                      borderColor: shift.color,
+                      backgroundColor: `${shift.color}12`,
+                    }
                     : undefined
                 }
               >
+                {/* Número del día + insignia "Cambio" si el turno viene de una excepción */}
                 <span className="flex items-center justify-between">
                   <span
                     className={cn(
@@ -347,6 +446,7 @@ export function CalendarView() {
                   ) : null}
                 </span>
 
+                {/* Etiquetas de festivo (puede haber varias) */}
                 {dayHolidays.length > 0 ? (
                   <span className="flex flex-wrap gap-1">
                     {dayHolidays.map((holiday) => (
@@ -360,12 +460,14 @@ export function CalendarView() {
                   </span>
                 ) : null}
 
+                {/* Horas reales trabajadas */}
                 {actualMinutes > 0 ? (
                   <span className="self-start rounded bg-emerald-500/15 px-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
                     Real {formatHours(actualMinutes)}
                   </span>
                 ) : null}
 
+                {/* Horas extra (se indica si además es festivo) */}
                 {overtimeMinutes > 0 ? (
                   <span className="self-start rounded bg-sky-500/15 px-1 text-[10px] font-medium text-sky-700 dark:text-sky-300">
                     +{formatHours(overtimeMinutes)} extra
@@ -373,6 +475,7 @@ export function CalendarView() {
                   </span>
                 ) : null}
 
+                {/* Turno planificado (nombre, intervalos y horas) o "Descanso" */}
                 {resolved?.kind === "shift" ? (
                   <span className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-1 text-xs font-semibold">
@@ -400,6 +503,7 @@ export function CalendarView() {
                   </span>
                 )}
 
+                {/* Nota de la excepción, limitada a 2 líneas */}
                 {overridesByDate.get(dateKey)?.notes ? (
                   <span className="text-muted-foreground line-clamp-2 text-[11px] italic">
                     {overridesByDate.get(dateKey)?.notes}
@@ -411,10 +515,14 @@ export function CalendarView() {
         </div>
       )}
 
+      {/* ------------------------------------------------------------------
+          Leyenda: ayuda de uso + colores de turnos y tipos de hora
+          ------------------------------------------------------------------ */}
       <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
         <span>
           Pulsa un día para editar excepciones, horas reales, extra o festivos.
         </span>
+        {/* Un punto de color por cada tipo de turno */}
         {(shifts ?? []).map((shift) => (
           <span key={shift._id} className="flex items-center gap-1">
             <span
@@ -449,8 +557,10 @@ export function CalendarView() {
         </span>
       </div>
 
+      {/* Estado vacío: no hay tipos de turno o todo el rango son descansos.
+          Invita a crear un patrón de turnos. */}
       {(shifts ?? []).length === 0 ||
-      calendar?.days.every((day) => day.kind === "rest") ? (
+        calendar?.days.every((day) => day.kind === "rest") ? (
         <p className="text-muted-foreground text-sm">
           Aún no hay turnos planificados.{" "}
           <Link className="underline" href="/patterns">
