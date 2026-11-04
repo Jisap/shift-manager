@@ -121,10 +121,12 @@ export function CalendarView() {
   const gridEnd = isMonthly
     ? endOfWeek(periodEnd, { weekStartsOn: 1 })
     : periodEnd;
-  // Rango completo del grid (incluye días de relleno de otros meses).
-  // Es el que se pide al backend.
-  const startDate = format(gridStart, "yyyy-MM-dd");
-  const endDate = format(gridEnd, "yyyy-MM-dd");
+  // La agenda solo pinta el periodo estricto, así que pide ese rango al
+  // backend. El resto de vistas necesita el grid completo con su relleno.
+  const queryStart = view === "agenda" ? periodStart : gridStart;
+  const queryEnd = view === "agenda" ? periodEnd : gridEnd;
+  const startDate = format(queryStart, "yyyy-MM-dd");
+  const endDate = format(queryEnd, "yyyy-MM-dd");
   // Rango estricto del periodo: se usa para los totales, que no deben contar
   // los días de relleno.
   const periodStartKey = format(periodStart, "yyyy-MM-dd");
@@ -153,6 +155,13 @@ export function CalendarView() {
       }
       return addDays(current, amount);
     });
+
+  // Al cambiar de vista se cierra el panel del día: la selección puede
+  // pertenecer al relleno del grid y quedar fuera del rango consultado.
+  const changeView = (nextView: CalendarViewMode) => {
+    setView(nextView);
+    setSelectedDate(null);
+  };
 
   // Etiqueta textual del periodo mostrado en la cabecera.
   const periodTitle = isMonthly
@@ -360,7 +369,7 @@ export function CalendarView() {
               variant={view === "month" ? "secondary" : "ghost"}
               size="sm"
               aria-pressed={view === "month"}
-              onClick={() => setView("month")}
+              onClick={() => changeView("month")}
             >
               Mes
             </Button>
@@ -369,7 +378,7 @@ export function CalendarView() {
               variant={view === "week" ? "secondary" : "ghost"}
               size="sm"
               aria-pressed={view === "week"}
-              onClick={() => setView("week")}
+              onClick={() => changeView("week")}
             >
               Semana
             </Button>
@@ -378,7 +387,7 @@ export function CalendarView() {
               variant={view === "day" ? "secondary" : "ghost"}
               size="sm"
               aria-pressed={view === "day"}
-              onClick={() => setView("day")}
+              onClick={() => changeView("day")}
             >
               Día
             </Button>
@@ -387,7 +396,7 @@ export function CalendarView() {
               variant={view === "agenda" ? "secondary" : "ghost"}
               size="sm"
               aria-pressed={view === "agenda"}
-              onClick={() => setView("agenda")}
+              onClick={() => changeView("agenda")}
             >
               Agenda
             </Button>
