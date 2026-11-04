@@ -24,6 +24,7 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  setYear,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
@@ -126,6 +127,16 @@ export function CalendarView() {
   const periodEndKey = format(periodEnd, "yyyy-MM-dd");
   // Clave de hoy, para resaltarlo en el grid.
   const todayKey = format(new Date(), "yyyy-MM-dd");
+  // Año actual del cursor y rango de años ofrecido en el selector. Se amplía
+  // con el año visible para que nunca desaparezca al navegar fuera del rango.
+  const currentYear = new Date().getFullYear();
+  const cursorYear = cursor.getFullYear();
+  const firstYear = Math.min(currentYear - 5, cursorYear);
+  const lastYear = Math.max(currentYear + 5, cursorYear);
+  const yearOptions = Array.from(
+    { length: lastYear - firstYear + 1 },
+    (_, index) => firstYear + index,
+  );
 
   // Navegación: avanza día, semana o mes según la vista activa.
   const moveCursor = (amount: number) =>
@@ -260,7 +271,7 @@ export function CalendarView() {
     return Math.max(
       0,
       Math.round((entry.actualEnd - entry.actualStart) / 60000) -
-      entry.breakMinutes,
+        entry.breakMinutes,
     );
   };
   // Total de minutos reales del periodo.
@@ -329,7 +340,11 @@ export function CalendarView() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           {/* Selector de vista: Mes / Semana / Día / Agenda */}
-          <div className="bg-muted flex items-center gap-1 rounded-lg p-1">
+          <div
+            role="group"
+            aria-label="Vista del calendario"
+            className="bg-muted flex items-center gap-1 rounded-lg p-1"
+          >
             <Button
               type="button"
               variant={view === "month" ? "secondary" : "ghost"}
@@ -368,7 +383,11 @@ export function CalendarView() {
             </Button>
           </div>
           {/* Navegación: periodo anterior / título / periodo siguiente / hoy */}
-          <div className="flex items-center gap-2">
+          <div
+            role="group"
+            aria-label="Navegación del periodo"
+            className="flex flex-wrap items-center gap-2"
+          >
             <Button
               type="button"
               variant="outline"
@@ -378,7 +397,10 @@ export function CalendarView() {
             >
               <ChevronLeft />
             </Button>
-            <h2 className="min-w-48 text-center text-lg font-semibold capitalize">
+            <h2
+              aria-live="polite"
+              className="min-w-32 text-center text-base font-semibold capitalize sm:min-w-48 sm:text-lg"
+            >
               {periodTitle}
             </h2>
             <Button
@@ -398,22 +420,46 @@ export function CalendarView() {
             >
               Hoy
             </Button>
+            {/* Selector de año: salta al mismo día/mes del año elegido. */}
+            <div className="flex items-center gap-1">
+              <label htmlFor="calendar-year" className="sr-only">
+                Año
+              </label>
+              <select
+                id="calendar-year"
+                value={cursorYear}
+                onChange={(event) =>
+                  setCursor((current) =>
+                    setYear(current, Number(event.target.value)),
+                  )
+                }
+                className="border-border bg-background hover:bg-muted focus-visible:ring-ring/50 h-7 rounded-lg border px-2 text-sm font-medium transition focus-visible:ring-3 focus-visible:outline-none"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         {/* Resumen del periodo: horas previstas, reales (si hay) y festivos */}
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-start gap-2 sm:items-end">
           <div className="text-muted-foreground text-sm">
             {calendar === undefined
               ? "Calculando…"
-              : `${formatHours(periodMinutes)} previstas ${periodLabel}${periodActualMinutes > 0
-                ? ` · ${formatHours(periodActualMinutes)} reales`
-                : ""
-              } · ${periodHolidays} ${periodHolidays === 1 ? "festivo" : "festivos"
-              }`}
+              : `${formatHours(periodMinutes)} previstas ${periodLabel}${
+                  periodActualMinutes > 0
+                    ? ` · ${formatHours(periodActualMinutes)} reales`
+                    : ""
+                } · ${periodHolidays} ${
+                  periodHolidays === 1 ? "festivo" : "festivos"
+                }`}
           </div>
           {/* Desglose por categoría; cada etiqueta solo aparece si tiene horas */}
           {periodClassification.total > 0 ? (
-            <div className="flex flex-wrap justify-end gap-1.5 text-[11px]">
+            <div className="flex flex-wrap justify-start gap-1.5 text-[11px] sm:justify-end">
               {periodClassification.normal > 0 ? (
                 <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-medium">
                   Normal {formatHours(periodClassification.normal)}
@@ -521,12 +567,17 @@ export function CalendarView() {
             const overtimeMinutes = dayEntry?.overtimeMinutes ?? 0;
             const actualMinutes = dayEntry ? actualMinutesOf(dayEntry) : 0;
             const note = overridesByDate.get(dateKey)?.notes;
+            const accessibleLabel = `${format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}, ${
+              resolved?.kind === "shift" ? (shift?.name ?? "turno") : "descanso"
+            }`;
 
             return (
               <li key={dateKey}>
                 <button
                   type="button"
                   aria-pressed={selectedDate === dateKey}
+                  aria-current={dateKey === todayKey ? "date" : undefined}
+                  aria-label={accessibleLabel}
                   onClick={() => setSelectedDate(dateKey)}
                   className={cn(
                     "hover:border-ring focus-visible:ring-ring/50 flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border p-3 text-left transition focus-visible:ring-3 focus-visible:outline-none",
@@ -539,9 +590,9 @@ export function CalendarView() {
                   style={
                     shift
                       ? {
-                        borderColor: shift.color,
-                        backgroundColor: `${shift.color}12`,
-                      }
+                          borderColor: shift.color,
+                          backgroundColor: `${shift.color}12`,
+                        }
                       : undefined
                   }
                 >
@@ -583,8 +634,7 @@ export function CalendarView() {
                         <span className="text-muted-foreground text-xs">
                           {resolved.intervals
                             .map(
-                              (interval) =>
-                                `${interval.start}–${interval.end}`,
+                              (interval) => `${interval.start}–${interval.end}`,
                             )
                             .join(" · ")}{" "}
                           · {formatHours(resolved.plannedMinutes)}
@@ -634,9 +684,9 @@ export function CalendarView() {
         // diaria (donde solo hay una celda, más grande).
         <div
           className={cn(
-            "grid gap-1",
+            "grid gap-0.5 sm:gap-1",
             view === "day" ? "grid-cols-1" : "grid-cols-7",
-            view === "week" && "gap-2",
+            view === "week" && "gap-1 sm:gap-2",
           )}
         >
           {gridDays.map((day) => {
@@ -656,17 +706,22 @@ export function CalendarView() {
             const dayEntry = timeEntriesByDate.get(dateKey);
             const overtimeMinutes = dayEntry?.overtimeMinutes ?? 0;
             const actualMinutes = dayEntry ? actualMinutesOf(dayEntry) : 0;
+            const accessibleLabel = `${format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}, ${
+              resolved?.kind === "shift" ? (shift?.name ?? "turno") : "descanso"
+            }`;
 
             return (
               <button
                 key={dateKey}
                 type="button"
                 aria-pressed={selectedDate === dateKey}
+                aria-current={dateKey === todayKey ? "date" : undefined}
+                aria-label={accessibleLabel}
                 onClick={() => setSelectedDate(dateKey)}
                 className={cn(
-                  "hover:border-ring focus-visible:ring-ring/50 flex min-h-28 flex-col gap-1 rounded-lg border p-2 text-left transition focus-visible:ring-3 focus-visible:outline-none",
+                  "hover:border-ring focus-visible:ring-ring/50 flex min-h-20 flex-col gap-1 rounded-lg border p-1.5 text-left transition focus-visible:ring-3 focus-visible:outline-none sm:min-h-28 sm:p-2",
                   // La vista semanal da más altura a cada día; la diaria, aún más.
-                  view === "week" && "min-h-56 p-3",
+                  view === "week" && "min-h-40 p-2 sm:min-h-56 sm:p-3",
                   view === "day" && "min-h-72 p-4",
                   // Los días de relleno se atenúan.
                   inPeriod ? "bg-card" : "bg-muted/30 text-muted-foreground",
@@ -680,9 +735,9 @@ export function CalendarView() {
                 style={
                   shift
                     ? {
-                      borderColor: shift.color,
-                      backgroundColor: `${shift.color}12`,
-                    }
+                        borderColor: shift.color,
+                        backgroundColor: `${shift.color}12`,
+                      }
                     : undefined
                 }
               >
@@ -735,22 +790,34 @@ export function CalendarView() {
                 {/* Turno planificado (nombre, intervalos y horas) o "Descanso" */}
                 {resolved?.kind === "shift" ? (
                   <span className="flex flex-col gap-0.5">
-                    <span className="flex items-center gap-1 text-xs font-semibold">
+                    <span className="flex min-w-0 items-center gap-1 text-xs font-semibold">
                       {shift ? (
                         <span
-                          className="size-2 rounded-full"
+                          className="size-2 shrink-0 rounded-full"
                           style={{ backgroundColor: shift.color }}
                           aria-hidden
                         />
                       ) : null}
-                      {shift?.name ?? "Turno"}
+                      <span className="truncate">{shift?.name ?? "Turno"}</span>
                     </span>
-                    <span className="text-muted-foreground text-[11px]">
+                    {/* En móvil, el mes solo muestra el nombre del turno para
+                        no saturar celdas de 7 columnas. */}
+                    <span
+                      className={cn(
+                        "text-muted-foreground text-[11px]",
+                        view === "month" && "hidden sm:block",
+                      )}
+                    >
                       {resolved.intervals
                         .map((interval) => `${interval.start}–${interval.end}`)
                         .join(" · ")}
                     </span>
-                    <span className="text-muted-foreground text-[11px]">
+                    <span
+                      className={cn(
+                        "text-muted-foreground text-[11px]",
+                        view === "month" && "hidden sm:block",
+                      )}
+                    >
                       {formatHours(resolved.plannedMinutes)}
                     </span>
                   </span>
@@ -817,7 +884,7 @@ export function CalendarView() {
       {/* Estado vacío: no hay tipos de turno o todo el rango son descansos.
           Invita a crear un patrón de turnos. */}
       {(shifts ?? []).length === 0 ||
-        calendar?.days.every((day) => day.kind === "rest") ? (
+      calendar?.days.every((day) => day.kind === "rest") ? (
         <p className="text-muted-foreground text-sm">
           Aún no hay turnos planificados.{" "}
           <Link className="underline" href="/patterns">

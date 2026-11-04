@@ -60,8 +60,8 @@ Aceptación: dado un patrón y un rango, el motor resuelve todas las jornadas co
 - [x] Vista diaria y agenda (selector Mes / Semana / Día / Agenda).
 - [x] Colores por turno, descansos y festivos (turnos, descansos y festivos manuales listos).
 - [x] Excepciones puntuales (`scheduleOverrides`) desde el calendario.
-- [ ] Navegación entre meses y años (meses listos; selector de año pendiente).
-- [ ] Revisión responsive y de accesibilidad.
+- [x] Navegación entre meses y años (selector de año añadido a la cabecera).
+- [x] Revisión responsive y de accesibilidad (celdas compactas en móvil, etiquetas accesibles y estados de hoy).
 
 Aceptación: calendario legible y editable; una excepción por fecha.
 
