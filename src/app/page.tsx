@@ -20,6 +20,9 @@ export default function Home() {
           <Link href="/signin">Entrar</Link>
         </Button>
         <Button asChild variant="outline">
+          <Link href="/dashboard">Dashboard</Link>
+        </Button>
+        <Button asChild variant="outline">
           <Link href="/shifts">Gestionar turnos</Link>
         </Button>
         <Button asChild variant="outline">
@@ -31,8 +34,8 @@ export default function Home() {
       </div>
 
       <p className="text-muted-foreground text-sm">
-        Turnos, patrones y calendario ya disponibles. Siguiente: registro de
-        horas.
+        Turnos, patrones, calendario y estadísticas ya disponibles. Siguiente:
+        exportación en PDF y CSV.
       </p>
     </main>
   );

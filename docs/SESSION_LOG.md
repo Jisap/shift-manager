@@ -25,3 +25,4 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-04 22:17 | opencode (deepseek-v4.1)   | Reaplicadas las correcciones de 29/02 y agenda tras sobrescritura     | [sessions/2026-11-04-2217-opencode.md](sessions/2026-11-04-2217-opencode.md) |
 | 2026-11-04 22:20 | opencode (deepseek-v4.1)   | La agenda consulta solo el periodo estricto a Convex                  | [sessions/2026-11-04-2220-opencode.md](sessions/2026-11-04-2220-opencode.md) |
 | 2026-11-04 22:23 | opencode (deepseek-v4.1)   | Limpia el día seleccionado al navegar por el calendario               | [sessions/2026-11-04-2223-opencode.md](sessions/2026-11-04-2223-opencode.md) |
+| 2026-11-04 22:30 | opencode (deepseek-v4.1)   | Fase 6: dashboard, próximos turnos, resumen y gráfico de horas        | [sessions/2026-11-04-2230-opencode.md](sessions/2026-11-04-2230-opencode.md) |

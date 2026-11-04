@@ -79,11 +79,11 @@ Aceptación: comparación fiable previsto/real.
 
 ## Fase 6 — Dashboard y estadísticas
 
-- [ ] Próximo turno y próximo descanso.
-- [ ] Resumen semanal y mensual.
-- [ ] Gráficos con Recharts.
-- [ ] Filtros por semana, mes, año e intervalo.
-- [ ] Tests de agregaciones.
+- [x] Próximo turno y próximo descanso (`/dashboard`).
+- [x] Resumen semanal y mensual.
+- [x] Gráficos con Recharts (previstas frente a reales, agrupadas según el periodo).
+- [x] Filtros por semana, mes, año e intervalo personalizado.
+- [x] Tests de agregaciones en `src/lib/calculations/statistics.test.ts`.
 
 Aceptación: panel útil y correcto.
 
