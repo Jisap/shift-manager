@@ -82,7 +82,8 @@ export function CalendarView() {
   // Modo de visualización: mes, semana, día o agenda (listado mensual).
   const [view, setView] = useState<CalendarViewMode>("month");
   // Fecha de referencia: cualquier día dentro del periodo visualizado
-  // (empieza en hoy). El mes o la semana se derivan de ella.
+  // (empieza en hoy). El mes, la semana o el día se derivan de ella según la
+  // vista activa.
   const [cursor, setCursor] = useState(() => new Date());
   // Fecha seleccionada ("yyyy-MM-dd") o null si no hay ninguna.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -104,9 +105,11 @@ export function CalendarView() {
     : view === "week"
       ? endOfWeek(cursor, { weekStartsOn: 1 })
       : cursor;
-  // El grid mensual necesita días de las semanas vecinas para completar filas
-  // (lunes como primer día). La semana ya es exacta, el día es una sola celda
-  // y la agenda no pinta grid.
+  // Mes y agenda comparten rango: se amplía a semanas completas (lunes como
+  // primer día) para que el grid mensual no tenga filas incompletas. La semana
+  // y el día ya son exactos y no necesitan relleno.
+  // Nota: la agenda reutiliza ese mismo rango, así que también lista los días
+  // de relleno de las semanas vecinas.
   const gridStart = isMonthly
     ? startOfWeek(periodStart, { weekStartsOn: 1 })
     : periodStart;
@@ -142,6 +145,7 @@ export function CalendarView() {
     : view === "week"
       ? `${format(gridStart, "d MMM", { locale: es })} – ${format(gridEnd, "d MMM yyyy", { locale: es })}`
       : format(cursor, "EEEE d 'de' MMMM 'de' yyyy", { locale: es });
+  // Texto para el resumen de horas ("X previstas este mes / esta semana / este día").
   const periodLabel = isMonthly
     ? "este mes"
     : view === "week"
@@ -239,7 +243,7 @@ export function CalendarView() {
     selectedDate === null ? undefined : timeEntriesByDate.get(selectedDate);
 
   // --------------------------------------------------------------------------
-  // Cálculo de minutos reales y totales del periodo (mes o semana)
+  // Cálculo de minutos reales y totales del periodo (mes, semana o día)
   // --------------------------------------------------------------------------
 
   // Minutos realmente trabajados en un registro: (fin - inicio) - descanso.
@@ -282,12 +286,13 @@ export function CalendarView() {
         }),
       ),
   );
-  // Total de minutos planificados en el periodo (excluye los días fuera del
-  // periodo que aparecen en el grid de la vista mensual).
+  // Total de minutos planificados en el periodo (excluye los días de relleno
+  // que el grid mensual y la agenda incluyen para completar semanas).
   const periodMinutes = (calendar?.days ?? [])
     .filter((day) => day.date >= periodStartKey && day.date <= periodEndKey)
     .reduce((total, day) => total + day.plannedMinutes, 0);
-  // Todos los días que se pintan en el grid (incluye relleno).
+  // Todos los días del rango pedido: alimentan tanto el grid como la agenda
+  // (incluye relleno en las vistas mensuales).
   const gridDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   // --------------------------------------------------------------------------
@@ -323,7 +328,7 @@ export function CalendarView() {
           ------------------------------------------------------------------ */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Selector de vista */}
+          {/* Selector de vista: Mes / Semana / Día / Agenda */}
           <div className="bg-muted flex items-center gap-1 rounded-lg p-1">
             <Button
               type="button"
@@ -480,7 +485,8 @@ export function CalendarView() {
       ) : null}
 
       {/* ------------------------------------------------------------------
-          Cabecera de días de la semana
+          Cabecera de días de la semana (solo en las vistas de 7 columnas:
+          mes y semana; el día y la agenda no la necesitan)
           ------------------------------------------------------------------ */}
       {view === "month" || view === "week" ? (
         <div className="text-muted-foreground grid grid-cols-7 gap-1 text-center text-xs font-medium">
@@ -493,7 +499,9 @@ export function CalendarView() {
       ) : null}
 
       {/* ------------------------------------------------------------------
-          Grid de días: una celda (botón) por día del mes o de la semana
+          Contenido principal según la vista:
+            - agenda: lista vertical, una fila por día,
+            - mes / semana / día: grid de celdas (7 columnas, o 1 en el día).
           ------------------------------------------------------------------ */}
       {calendar === undefined ? (
         <p className="text-muted-foreground text-sm">Cargando calendario…</p>
@@ -501,6 +509,7 @@ export function CalendarView() {
         // Listado del mes: una fila por día con el turno, festivos, horas y nota.
         <ul className="flex flex-col gap-2">
           {gridDays.map((day) => {
+            // Datos de cada fila, buscados por fecha en los Map precalculados.
             const dateKey = format(day, "yyyy-MM-dd");
             const resolved = daysByDate.get(dateKey);
             const shift =
@@ -521,9 +530,12 @@ export function CalendarView() {
                   onClick={() => setSelectedDate(dateKey)}
                   className={cn(
                     "hover:border-ring focus-visible:ring-ring/50 flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border p-3 text-left transition focus-visible:ring-3 focus-visible:outline-none",
+                    // Hoy: anillo de color primario.
                     dateKey === todayKey && "ring-primary ring-2",
+                    // Día seleccionado: borde primario.
                     selectedDate === dateKey && "border-primary",
                   )}
+                  // Mismo tratamiento de color que las celdas del grid.
                   style={
                     shift
                       ? {
@@ -533,7 +545,7 @@ export function CalendarView() {
                       : undefined
                   }
                 >
-                  {/* Fecha: día de la semana y número */}
+                  {/* Columna 1: día de la semana y número, con mes y año debajo */}
                   <span className="flex w-28 shrink-0 flex-col">
                     <span
                       className={cn(
@@ -548,7 +560,8 @@ export function CalendarView() {
                     </span>
                   </span>
 
-                  {/* Turno o descanso, intervalos, duración y nota */}
+                  {/* Columna 2 (flexible): turno o descanso, intervalos,
+                      duración y nota de la excepción */}
                   <span className="flex min-w-40 flex-1 flex-col gap-0.5">
                     {resolved?.kind === "shift" ? (
                       <>
@@ -589,7 +602,8 @@ export function CalendarView() {
                     ) : null}
                   </span>
 
-                  {/* Festivos, horas reales y horas extra del día */}
+                  {/* Columna 3: etiquetas de festivos, horas reales y horas
+                      extra del día, alineadas a la derecha */}
                   <span className="flex flex-wrap items-center justify-end gap-1.5 text-[11px]">
                     {dayHolidays.map((holiday) => (
                       <span
@@ -616,6 +630,8 @@ export function CalendarView() {
           })}
         </ul>
       ) : (
+        // Grid de celdas: 7 columnas en mes y semana, 1 columna en la vista
+        // diaria (donde solo hay una celda, más grande).
         <div
           className={cn(
             "grid gap-1",
@@ -632,8 +648,8 @@ export function CalendarView() {
                 ? shiftsById.get(resolved.shiftTypeId)
                 : undefined;
             // Falso para los días de relleno de la vista mensual (mes
-            // anterior/siguiente). En la vista semanal todos los días
-            // pertenecen al periodo.
+            // anterior/siguiente). En la vista semanal y en la diaria todos
+            // los días pertenecen al periodo.
             const inPeriod =
               dateKey >= periodStartKey && dateKey <= periodEndKey;
             const dayHolidays = holidaysByDate.get(dateKey) ?? [];
