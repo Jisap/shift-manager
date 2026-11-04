@@ -57,11 +57,17 @@ import { formatHours } from "@/lib/calculations/overtime";
 import { daysBetweenLocal, isValidLocalDate } from "@/lib/dates/local-date";
 import { cn } from "@/lib/utils";
 
+// Ventana (en días desde hoy) en la que se busca el próximo turno/descanso.
 const UPCOMING_DAYS = 90;
+// Tope de días del periodo de estadísticas, para acotar el volumen de datos
+// que se pide al backend.
 const MAX_RANGE_DAYS = 366;
 
+// Periodos predefinidos del filtro, más uno de fechas libres.
 type FilterMode = "week" | "month" | "year" | "custom";
 
+// Texto de cada botón del filtro. El orden de las claves define el orden
+// en pantalla.
 const FILTER_LABELS: Record<FilterMode, string> = {
   week: "Semana",
   month: "Mes",
@@ -69,8 +75,14 @@ const FILTER_LABELS: Record<FilterMode, string> = {
   custom: "Personalizado",
 };
 
+// Rango de fechas locales en formato "yyyy-MM-dd" (ambos extremos incluidos).
 type DateRange = { start: string; end: string };
 
+/**
+ * Calcula el rango de fechas de un filtro respecto a una fecha de referencia.
+ * Las semanas empiezan en lunes. En modo "custom" devuelve las fechas
+ * introducidas tal cual, sin validar (eso lo hace `isValidRange`).
+ */
 function rangeForFilter(
   filter: FilterMode,
   customStart: string,
@@ -98,6 +110,11 @@ function rangeForFilter(
   return { start: customStart, end: customEnd };
 }
 
+/**
+ * Un rango es válido si ambas fechas existen, están en orden (fin >= inicio)
+ * y no superan `MAX_RANGE_DAYS` días. Las fechas "yyyy-MM-dd" se comparan
+ * como texto porque ese formato ordena igual que el calendario.
+ */
 function isValidRange(range: DateRange): boolean {
   return (
     isValidLocalDate(range.start) &&
@@ -107,6 +124,11 @@ function isValidRange(range: DateRange): boolean {
   );
 }
 
+/**
+ * Etiqueta del eje X del gráfico. Las agrupaciones por mes llegan como
+ * "yyyy-MM" (se añade "-01" para poder parsearlas); las de día y semana,
+ * como fecha completa.
+ */
 function bucketLabel(key: string, size: StatisticsBucketSize): string {
   if (size === "month") {
     return format(parseISO(`${key}-01`), "MMM yy", { locale: es });
@@ -114,6 +136,7 @@ function bucketLabel(key: string, size: StatisticsBucketSize): string {
   return format(parseISO(key), "d MMM", { locale: es });
 }
 
+/** Diferencia en minutos con signo explícito: "+2 h", "−1 h" o "0 h". */
 function formatDifference(minutes: number): string {
   if (minutes === 0) {
     return "0 h";
@@ -121,6 +144,30 @@ function formatDifference(minutes: number): string {
   return `${minutes > 0 ? "+" : "−"}${formatHours(Math.abs(minutes))}`;
 }
 
+/**
+ * Devuelve el día más temprano del tipo indicado. No depende del orden en que
+ * lleguen los días desde el backend.
+ */
+function earliestDay<T extends { date: string; kind: "shift" | "rest" }>(
+  days: T[] | undefined,
+  kind: "shift" | "rest",
+): T | undefined {
+  if (days === undefined) {
+    return undefined;
+  }
+  let earliest: T | undefined;
+  for (const day of days) {
+    if (
+      day.kind === kind &&
+      (earliest === undefined || day.date < earliest.date)
+    ) {
+      earliest = day;
+    }
+  }
+  return earliest;
+}
+
+/** Texto relativo hasta una fecha: "Hoy", "Mañana" o "En N días". */
 function daysUntilLabel(today: string, date: string): string {
   const days = daysBetweenLocal(today, date);
   if (days <= 0) {
@@ -133,10 +180,17 @@ function daysUntilLabel(today: string, date: string): string {
 }
 
 export function DashboardView() {
+  // Estado de la sesión de Convex. Sin sesión no se lanzan las queries.
   const { isAuthenticated, isLoading } = useConvexAuth();
 
+  // --------------------------------------------------------------------------
+  // Filtro y rango del periodo
+  // --------------------------------------------------------------------------
+
+  // Clave de hoy ("yyyy-MM-dd"): origen de la ventana de próximos días.
   const today = format(new Date(), "yyyy-MM-dd");
   const [filter, setFilter] = useState<FilterMode>("month");
+  // Fechas del modo personalizado; empiezan en el mes actual.
   const [customStart, setCustomStart] = useState(() =>
     format(startOfMonth(new Date()), "yyyy-MM-dd"),
   );
@@ -146,27 +200,41 @@ export function DashboardView() {
 
   const range = rangeForFilter(filter, customStart, customEnd, new Date());
   const rangeValid = isValidRange(range);
+  // Si el rango no es válido se salta la consulta ("skip") para no pedir
+  // datos de un periodo incorrecto o demasiado grande.
   const queryArgs = rangeValid
     ? { startDate: range.start, endDate: range.end }
     : "skip";
+  // Rango fijo de los próximos turnos/descansos; no depende del filtro.
   const upcomingArgs = {
     startDate: today,
     endDate: format(addDays(new Date(), UPCOMING_DAYS), "yyyy-MM-dd"),
   };
 
+  // --------------------------------------------------------------------------
+  // Consultas a Convex
+  // --------------------------------------------------------------------------
+  // Se usa "skip" mientras no hay sesión (y, en las del periodo, mientras el
+  // rango no es válido).
+
+  // Calendario resuelto del periodo seleccionado (turno y minutos por día).
   const calendar = useQuery(
     api.calendar.getRange,
     isAuthenticated && queryArgs !== "skip" ? queryArgs : "skip",
   );
+  // Calendario de los próximos días, para el próximo turno y descanso.
   const upcoming = useQuery(
     api.calendar.getRange,
     isAuthenticated ? upcomingArgs : "skip",
   );
+  // Tipos de turno (nombre y color) para mostrar el próximo turno.
   const shifts = useQuery(api.shiftTypes.list, isAuthenticated ? {} : "skip");
+  // Horas reales y extra registradas en el periodo.
   const timeEntries = useQuery(
     api.timeEntries.listRange,
     isAuthenticated && queryArgs !== "skip" ? queryArgs : "skip",
   );
+  // Festivos y excepciones del periodo: sirven para clasificar las horas.
   const holidays = useQuery(
     api.holidays.listRange,
     isAuthenticated && queryArgs !== "skip" ? queryArgs : "skip",
@@ -176,11 +244,19 @@ export function DashboardView() {
     isAuthenticated && queryArgs !== "skip" ? queryArgs : "skip",
   );
 
+  // --------------------------------------------------------------------------
+  // Datos derivados
+  // --------------------------------------------------------------------------
+
+  // Índice de tipos de turno por id, para acceso directo al pintar.
   const shiftsById = useMemo(
     () => new Map((shifts ?? []).map((shift) => [String(shift._id), shift])),
     [shifts],
   );
 
+  // Resumen del periodo. Mientras el calendario carga se devuelve uno vacío;
+  // si no, `buildStatistics` combina días, registros de horas, festivos y
+  // días extra (excepciones de tipo "extra") y clasifica las horas.
   const summary = useMemo(() => {
     if (calendar === undefined) {
       return emptyStatisticsSummary();
@@ -197,7 +273,9 @@ export function DashboardView() {
     });
   }, [calendar, timeEntries, holidays, overrides]);
 
+  // Granularidad del gráfico (día, semana o mes) según la longitud del rango.
   const bucketSize = statisticsBucketSize(range.start, range.end);
+  // Datos de Recharts: minutos pasados a horas con un decimal.
   const chartData = bucketStatistics(summary.days, bucketSize).map(
     (bucket) => ({
       label: bucketLabel(bucket.key, bucketSize),
@@ -206,12 +284,18 @@ export function DashboardView() {
     }),
   );
 
-  const nextShift = upcoming?.days.find((day) => day.kind === "shift");
-  const nextRest = upcoming?.days.find((day) => day.kind === "rest");
+  // Primer día con turno y primer descanso de la ventana de próximos días.
+  // Se asume que `days` viene ordenado por fecha.
+  const nextShift = earliestDay(upcoming?.days, "shift");
+  const nextRest = earliestDay(upcoming?.days, "rest");
   const nextShiftType =
     nextShift?.shiftTypeId === undefined
       ? undefined
       : shiftsById.get(nextShift.shiftTypeId);
+
+  // --------------------------------------------------------------------------
+  // Estados tempranos: cargando y sin sesión
+  // --------------------------------------------------------------------------
 
   if (isLoading) {
     return <p className="text-muted-foreground text-sm">Cargando…</p>;
@@ -239,6 +323,7 @@ export function DashboardView() {
     <div className="flex w-full flex-col gap-6">
       {/* Próximo turno y próximo descanso */}
       <div className="grid gap-4 md:grid-cols-2">
+        {/* Próximo turno: nombre con su color, fecha, horario y duración */}
         <Card>
           <CardHeader>
             <CardDescription>Próximo turno</CardDescription>
@@ -282,6 +367,7 @@ export function DashboardView() {
           </CardContent>
         </Card>
 
+        {/* Próximo descanso: fecha, cuánto falta y enlace al calendario */}
         <Card>
           <CardHeader>
             <CardDescription>Próximo descanso</CardDescription>
@@ -317,7 +403,8 @@ export function DashboardView() {
         </Card>
       </div>
 
-      {/* Filtros del periodo */}
+      {/* Filtros del periodo: botones predefinidos, fechas libres (solo en
+          modo "Personalizado") y texto con el rango resultante */}
       <div className="flex flex-wrap items-end gap-3">
         <div
           role="group"
@@ -338,6 +425,8 @@ export function DashboardView() {
           ))}
         </div>
 
+        {/* Selectores de fecha: cada uno limita al otro con `max`/`min`
+            para que el usuario no pueda invertir el rango desde el selector */}
         {filter === "custom" ? (
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col gap-1">
@@ -369,13 +458,16 @@ export function DashboardView() {
           </div>
         ) : null}
 
-        <p className="text-muted-foreground text-sm">
-          {format(parseISO(range.start), "d MMM yyyy", { locale: es })}
-          {" – "}
-          {format(parseISO(range.end), "d MMM yyyy", { locale: es })}
-        </p>
+        {rangeValid ? (
+          <p className="text-muted-foreground text-sm">
+            {format(parseISO(range.start), "d MMM yyyy", { locale: es })}
+            {" – "}
+            {format(parseISO(range.end), "d MMM yyyy", { locale: es })}
+          </p>
+        ) : null}
       </div>
 
+      {/* Si el rango no es válido se muestra el motivo y no se pinta nada más */}
       {!rangeValid ? (
         <p className="text-destructive text-sm">
           El periodo debe tener fechas válidas, estar en orden y no superar{" "}
@@ -393,6 +485,8 @@ export function DashboardView() {
               label="Horas reales"
               value={formatHours(summary.actualMinutes)}
             />
+            {/* La diferencia se colorea: verde si se trabajó de más, rojo si
+                de menos y neutro si coincide con lo previsto */}
             <SummaryCard
               label="Diferencia"
               value={formatDifference(summary.differenceMinutes)}
@@ -417,7 +511,8 @@ export function DashboardView() {
             />
           </div>
 
-          {/* Desglose por categoría */}
+          {/* Desglose por categoría (mismos colores que en el calendario);
+              `CategoryBadge` no pinta las categorías sin horas */}
           {summary.classified.total > 0 ? (
             <div className="flex flex-wrap gap-2 text-xs">
               <CategoryBadge
@@ -443,7 +538,8 @@ export function DashboardView() {
             </div>
           ) : null}
 
-          {/* Gráfico comparativo */}
+          {/* Gráfico comparativo: barras de horas previstas y reales por
+              día, semana o mes según la longitud del periodo */}
           <Card>
             <CardHeader>
               <CardTitle>Previstas frente a reales</CardTitle>
@@ -499,6 +595,10 @@ export function DashboardView() {
   );
 }
 
+/**
+ * Tarjeta con una etiqueta y un valor destacado. `tone` colorea el valor:
+ * verde (positivo), rojo (negativo) o el color por defecto (neutral).
+ */
 function SummaryCard({
   label,
   value,
@@ -526,6 +626,10 @@ function SummaryCard({
   );
 }
 
+/**
+ * Etiqueta de una categoría de horas con su duración. No renderiza nada si
+ * la categoría no tiene minutos.
+ */
 function CategoryBadge({
   label,
   minutes,
