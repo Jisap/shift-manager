@@ -144,8 +144,10 @@ export function CalendarView() {
     (_, index) => firstYear + index,
   );
 
-  // Navegación: avanza día, semana o mes según la vista activa.
-  const moveCursor = (amount: number) =>
+  // Navegación: avanza día, semana o mes según la vista activa. Se cierra el
+  // panel del día para no editar una fecha que queda fuera del rango.
+  const moveCursor = (amount: number) => {
+    setSelectedDate(null);
     setCursor((current) => {
       if (isMonthly) {
         return addMonths(current, amount);
@@ -155,9 +157,10 @@ export function CalendarView() {
       }
       return addDays(current, amount);
     });
+  };
 
-  // Al cambiar de vista se cierra el panel del día: la selección puede
-  // pertenecer al relleno del grid y quedar fuera del rango consultado.
+  // Al cambiar de vista o de periodo se cierra el panel del día: la selección
+  // puede pertenecer al relleno del grid y quedar fuera del rango consultado.
   const changeView = (nextView: CalendarViewMode) => {
     setView(nextView);
     setSelectedDate(null);
@@ -439,12 +442,16 @@ export function CalendarView() {
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setCursor(new Date())}
+              onClick={() => {
+                setSelectedDate(null);
+                setCursor(new Date());
+              }}
             >
               Hoy
             </Button>
-            {/* Selector de año: salta al mismo día/mes del año elegido.
-                La etiqueta es solo para lectores de pantalla (`sr-only`). */}
+            {/* Selector de año: salta al mismo día/mes del año elegido (si ese
+                día no existe, p. ej. 29/02, usa el último del mes). La etiqueta
+                es solo para lectores de pantalla (`sr-only`). */}
             <div className="flex items-center gap-1">
               <label htmlFor="calendar-year" className="sr-only">
                 Año
@@ -454,6 +461,7 @@ export function CalendarView() {
                 value={cursorYear}
                 onChange={(event) => {
                   const nextYear = Number(event.target.value);
+                  setSelectedDate(null);
                   setCursor((current) => {
                     // Se parte del día 1 para evitar que el 29 de febrero salte
                     // a marzo al elegir un año no bisiesto; luego se restaura
