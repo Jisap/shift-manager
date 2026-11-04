@@ -3,7 +3,8 @@
 /**
  * CalendarView
  * ----------------------------------------------------------------------------
- * Vista mensual y semanal del calendario de turnos. Muestra, para cada día:
+ * Vistas mensual, semanal, diaria y agenda del calendario de turnos. Muestra,
+ * para cada día:
  *   - el turno planificado (o "Descanso"),
  *   - festivos,
  *   - horas reales trabajadas,
@@ -16,6 +17,7 @@
 
 import { useConvexAuth, useQuery } from "convex/react";
 import {
+  addDays,
   addMonths,
   addWeeks,
   eachDayOfInterval,
@@ -53,6 +55,23 @@ import { DayOverrideEditor } from "./DayOverrideEditor";
 // `weekStartsOn: 1` en las funciones de date-fns más abajo.
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
+// Modos de visualización disponibles. "agenda" es un listado del mes.
+type CalendarViewMode = "month" | "week" | "day" | "agenda";
+
+// Etiquetas accesibles de los botones de navegación por vista.
+const PREVIOUS_LABEL: Record<CalendarViewMode, string> = {
+  month: "Mes anterior",
+  week: "Semana anterior",
+  day: "Día anterior",
+  agenda: "Mes anterior",
+};
+const NEXT_LABEL: Record<CalendarViewMode, string> = {
+  month: "Mes siguiente",
+  week: "Semana siguiente",
+  day: "Día siguiente",
+  agenda: "Mes siguiente",
+};
+
 export function CalendarView() {
   // --------------------------------------------------------------------------
   // Estado y autenticación
@@ -60,8 +79,8 @@ export function CalendarView() {
 
   // Estado de la sesión de Convex. Sin sesión no se lanzan las queries.
   const { isAuthenticated, isLoading } = useConvexAuth();
-  // Modo de visualización: mes completo o una semana.
-  const [view, setView] = useState<"month" | "week">("month");
+  // Modo de visualización: mes, semana, día o agenda (listado mensual).
+  const [view, setView] = useState<CalendarViewMode>("month");
   // Fecha de referencia: cualquier día dentro del periodo visualizado
   // (empieza en hoy). El mes o la semana se derivan de ella.
   const [cursor, setCursor] = useState(() => new Date());
@@ -72,19 +91,28 @@ export function CalendarView() {
   // Rangos de fechas
   // --------------------------------------------------------------------------
 
-  // En la vista mensual el grid necesita días de la semana anterior/siguiente
-  // para completar filas completas (lunes como primer día de semana). En la
-  // vista semanal el grid es exactamente la semana del cursor.
-  const periodStart =
-    view === "month"
-      ? startOfMonth(cursor)
-      : startOfWeek(cursor, { weekStartsOn: 1 });
-  const periodEnd =
-    view === "month"
-      ? endOfMonth(cursor)
-      : endOfWeek(cursor, { weekStartsOn: 1 });
-  const gridStart = startOfWeek(periodStart, { weekStartsOn: 1 });
-  const gridEnd = endOfWeek(periodEnd, { weekStartsOn: 1 });
+  // En la vista mensual y en la agenda el periodo es el mes del cursor. En la
+  // vista semanal es la semana y en la diaria, el propio día.
+  const isMonthly = view === "month" || view === "agenda";
+  const periodStart = isMonthly
+    ? startOfMonth(cursor)
+    : view === "week"
+      ? startOfWeek(cursor, { weekStartsOn: 1 })
+      : cursor;
+  const periodEnd = isMonthly
+    ? endOfMonth(cursor)
+    : view === "week"
+      ? endOfWeek(cursor, { weekStartsOn: 1 })
+      : cursor;
+  // El grid mensual necesita días de las semanas vecinas para completar filas
+  // (lunes como primer día). La semana ya es exacta, el día es una sola celda
+  // y la agenda no pinta grid.
+  const gridStart = isMonthly
+    ? startOfWeek(periodStart, { weekStartsOn: 1 })
+    : periodStart;
+  const gridEnd = isMonthly
+    ? endOfWeek(periodEnd, { weekStartsOn: 1 })
+    : periodEnd;
   // Rango completo del grid (incluye días de relleno de otros meses).
   // Es el que se pide al backend.
   const startDate = format(gridStart, "yyyy-MM-dd");
@@ -96,18 +124,29 @@ export function CalendarView() {
   // Clave de hoy, para resaltarlo en el grid.
   const todayKey = format(new Date(), "yyyy-MM-dd");
 
-  // Navegación: avanza mes o semana según la vista activa.
+  // Navegación: avanza día, semana o mes según la vista activa.
   const moveCursor = (amount: number) =>
-    setCursor((current) =>
-      view === "month" ? addMonths(current, amount) : addWeeks(current, amount),
-    );
+    setCursor((current) => {
+      if (isMonthly) {
+        return addMonths(current, amount);
+      }
+      if (view === "week") {
+        return addWeeks(current, amount);
+      }
+      return addDays(current, amount);
+    });
 
   // Etiqueta textual del periodo mostrado en la cabecera.
-  const periodTitle =
-    view === "month"
-      ? format(cursor, "MMMM 'de' yyyy", { locale: es })
-      : `${format(gridStart, "d MMM", { locale: es })} – ${format(gridEnd, "d MMM yyyy", { locale: es })}`;
-  const periodLabel = view === "month" ? "este mes" : "esta semana";
+  const periodTitle = isMonthly
+    ? format(cursor, "MMMM 'de' yyyy", { locale: es })
+    : view === "week"
+      ? `${format(gridStart, "d MMM", { locale: es })} – ${format(gridEnd, "d MMM yyyy", { locale: es })}`
+      : format(cursor, "EEEE d 'de' MMMM 'de' yyyy", { locale: es });
+  const periodLabel = isMonthly
+    ? "este mes"
+    : view === "week"
+      ? "esta semana"
+      : "este día";
 
   // --------------------------------------------------------------------------
   // Consultas a Convex
@@ -304,6 +343,24 @@ export function CalendarView() {
             >
               Semana
             </Button>
+            <Button
+              type="button"
+              variant={view === "day" ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={view === "day"}
+              onClick={() => setView("day")}
+            >
+              Día
+            </Button>
+            <Button
+              type="button"
+              variant={view === "agenda" ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={view === "agenda"}
+              onClick={() => setView("agenda")}
+            >
+              Agenda
+            </Button>
           </div>
           {/* Navegación: periodo anterior / título / periodo siguiente / hoy */}
           <div className="flex items-center gap-2">
@@ -311,7 +368,7 @@ export function CalendarView() {
               type="button"
               variant="outline"
               size="icon-sm"
-              aria-label={view === "month" ? "Mes anterior" : "Semana anterior"}
+              aria-label={PREVIOUS_LABEL[view]}
               onClick={() => moveCursor(-1)}
             >
               <ChevronLeft />
@@ -323,9 +380,7 @@ export function CalendarView() {
               type="button"
               variant="outline"
               size="icon-sm"
-              aria-label={
-                view === "month" ? "Mes siguiente" : "Semana siguiente"
-              }
+              aria-label={NEXT_LABEL[view]}
               onClick={() => moveCursor(1)}
             >
               <ChevronRight />
@@ -427,22 +482,146 @@ export function CalendarView() {
       {/* ------------------------------------------------------------------
           Cabecera de días de la semana
           ------------------------------------------------------------------ */}
-      <div className="text-muted-foreground grid grid-cols-7 gap-1 text-center text-xs font-medium">
-        {WEEKDAYS.map((weekday) => (
-          <div key={weekday} className="py-1">
-            {weekday}
-          </div>
-        ))}
-      </div>
+      {view === "month" || view === "week" ? (
+        <div className="text-muted-foreground grid grid-cols-7 gap-1 text-center text-xs font-medium">
+          {WEEKDAYS.map((weekday) => (
+            <div key={weekday} className="py-1">
+              {weekday}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {/* ------------------------------------------------------------------
           Grid de días: una celda (botón) por día del mes o de la semana
           ------------------------------------------------------------------ */}
       {calendar === undefined ? (
         <p className="text-muted-foreground text-sm">Cargando calendario…</p>
+      ) : view === "agenda" ? (
+        // Listado del mes: una fila por día con el turno, festivos, horas y nota.
+        <ul className="flex flex-col gap-2">
+          {gridDays.map((day) => {
+            const dateKey = format(day, "yyyy-MM-dd");
+            const resolved = daysByDate.get(dateKey);
+            const shift =
+              resolved?.shiftTypeId !== undefined
+                ? shiftsById.get(resolved.shiftTypeId)
+                : undefined;
+            const dayHolidays = holidaysByDate.get(dateKey) ?? [];
+            const dayEntry = timeEntriesByDate.get(dateKey);
+            const overtimeMinutes = dayEntry?.overtimeMinutes ?? 0;
+            const actualMinutes = dayEntry ? actualMinutesOf(dayEntry) : 0;
+            const note = overridesByDate.get(dateKey)?.notes;
+
+            return (
+              <li key={dateKey}>
+                <button
+                  type="button"
+                  aria-pressed={selectedDate === dateKey}
+                  onClick={() => setSelectedDate(dateKey)}
+                  className={cn(
+                    "hover:border-ring focus-visible:ring-ring/50 flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border p-3 text-left transition focus-visible:ring-3 focus-visible:outline-none",
+                    dateKey === todayKey && "ring-primary ring-2",
+                    selectedDate === dateKey && "border-primary",
+                  )}
+                  style={
+                    shift
+                      ? {
+                        borderColor: shift.color,
+                        backgroundColor: `${shift.color}12`,
+                      }
+                      : undefined
+                  }
+                >
+                  {/* Fecha: día de la semana y número */}
+                  <span className="flex w-28 shrink-0 flex-col">
+                    <span
+                      className={cn(
+                        "text-sm font-semibold capitalize",
+                        dateKey === todayKey && "text-primary",
+                      )}
+                    >
+                      {format(day, "EEEE d", { locale: es })}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {format(day, "MMM yyyy", { locale: es })}
+                    </span>
+                  </span>
+
+                  {/* Turno o descanso, intervalos, duración y nota */}
+                  <span className="flex min-w-40 flex-1 flex-col gap-0.5">
+                    {resolved?.kind === "shift" ? (
+                      <>
+                        <span className="flex items-center gap-1 text-sm font-semibold">
+                          {shift ? (
+                            <span
+                              className="size-2 rounded-full"
+                              style={{ backgroundColor: shift.color }}
+                              aria-hidden
+                            />
+                          ) : null}
+                          {shift?.name ?? "Turno"}
+                          {resolved.source === "override" ? (
+                            <span className="bg-foreground/10 rounded px-1 text-[10px] uppercase">
+                              Cambio
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="text-muted-foreground text-xs">
+                          {resolved.intervals
+                            .map(
+                              (interval) =>
+                                `${interval.start}–${interval.end}`,
+                            )
+                            .join(" · ")}{" "}
+                          · {formatHours(resolved.plannedMinutes)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">
+                        Descanso
+                      </span>
+                    )}
+                    {note ? (
+                      <span className="text-muted-foreground line-clamp-2 text-xs italic">
+                        {note}
+                      </span>
+                    ) : null}
+                  </span>
+
+                  {/* Festivos, horas reales y horas extra del día */}
+                  <span className="flex flex-wrap items-center justify-end gap-1.5 text-[11px]">
+                    {dayHolidays.map((holiday) => (
+                      <span
+                        key={holiday._id}
+                        className="rounded bg-amber-500/15 px-1.5 py-0.5 font-medium text-amber-700 dark:text-amber-300"
+                      >
+                        {holiday.name}
+                      </span>
+                    ))}
+                    {actualMinutes > 0 ? (
+                      <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-medium text-emerald-700 dark:text-emerald-300">
+                        Real {formatHours(actualMinutes)}
+                      </span>
+                    ) : null}
+                    {overtimeMinutes > 0 ? (
+                      <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-medium text-sky-700 dark:text-sky-300">
+                        +{formatHours(overtimeMinutes)} extra
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       ) : (
         <div
-          className={cn("grid grid-cols-7 gap-1", view === "week" && "gap-2")}
+          className={cn(
+            "grid gap-1",
+            view === "day" ? "grid-cols-1" : "grid-cols-7",
+            view === "week" && "gap-2",
+          )}
         >
           {gridDays.map((day) => {
             // Datos de cada celda, buscados por fecha en los Map precalculados.
@@ -470,8 +649,9 @@ export function CalendarView() {
                 onClick={() => setSelectedDate(dateKey)}
                 className={cn(
                   "hover:border-ring focus-visible:ring-ring/50 flex min-h-28 flex-col gap-1 rounded-lg border p-2 text-left transition focus-visible:ring-3 focus-visible:outline-none",
-                  // La vista semanal da más altura a cada día.
+                  // La vista semanal da más altura a cada día; la diaria, aún más.
                   view === "week" && "min-h-56 p-3",
+                  view === "day" && "min-h-72 p-4",
                   // Los días de relleno se atenúan.
                   inPeriod ? "bg-card" : "bg-muted/30 text-muted-foreground",
                   // Hoy: anillo de color primario.

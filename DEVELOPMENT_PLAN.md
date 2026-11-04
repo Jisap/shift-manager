@@ -57,7 +57,7 @@ Aceptación: dado un patrón y un rango, el motor resuelve todas las jornadas co
 
 - [x] Vista mensual.
 - [x] Vista semanal.
-- [ ] Vista diaria y agenda.
+- [x] Vista diaria y agenda (selector Mes / Semana / Día / Agenda).
 - [x] Colores por turno, descansos y festivos (turnos, descansos y festivos manuales listos).
 - [x] Excepciones puntuales (`scheduleOverrides`) desde el calendario.
 - [ ] Navegación entre meses y años (meses listos; selector de año pendiente).
