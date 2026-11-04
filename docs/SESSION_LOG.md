@@ -21,3 +21,5 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-03 22:30 | opencode (deepseek-v4.1)   | Vista semanal del calendario reutilizando el grid y la clasificación  | [sessions/2026-11-03-2230-opencode.md](sessions/2026-11-03-2230-opencode.md) |
 | 2026-11-04 10:09 | opencode (deepseek-v4.1)   | Vista diaria y agenda/listado del calendario en `CalendarView`        | [sessions/2026-11-04-1009-opencode.md](sessions/2026-11-04-1009-opencode.md) |
 | 2026-11-04 22:05 | opencode (deepseek-v4.1)   | Selector de año y ajustes responsive/accesibles del calendario        | [sessions/2026-11-04-2205-opencode.md](sessions/2026-11-04-2205-opencode.md) |
+| 2026-11-04 22:13 | opencode (deepseek-v4.1)   | Corrección del 29/02 en el selector de año y relleno en la agenda     | [sessions/2026-11-04-2213-opencode.md](sessions/2026-11-04-2213-opencode.md) |
+| 2026-11-04 22:17 | opencode (deepseek-v4.1)   | Reaplicadas las correcciones de 29/02 y agenda tras sobrescritura     | [sessions/2026-11-04-2217-opencode.md](sessions/2026-11-04-2217-opencode.md) |

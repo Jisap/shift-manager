@@ -13,6 +13,10 @@
  *
  * Al pulsar un día se abre un panel con cuatro editores (excepción, horas
  * reales, horas extra y festivos). Los datos vienen de Convex en tiempo real.
+ *
+ * La interfaz es responsive (celdas compactas en móvil) y accesible: cada día
+ * tiene una etiqueta descriptiva, "hoy" se marca con `aria-current` y los
+ * grupos de controles están etiquetados.
  */
 
 import { useConvexAuth, useQuery } from "convex/react";
@@ -24,6 +28,8 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  getDaysInMonth,
+  setDate,
   setYear,
   startOfMonth,
   startOfWeek,
@@ -106,11 +112,9 @@ export function CalendarView() {
     : view === "week"
       ? endOfWeek(cursor, { weekStartsOn: 1 })
       : cursor;
-  // Mes y agenda comparten rango: se amplía a semanas completas (lunes como
-  // primer día) para que el grid mensual no tenga filas incompletas. La semana
-  // y el día ya son exactos y no necesitan relleno.
-  // Nota: la agenda reutiliza ese mismo rango, así que también lista los días
-  // de relleno de las semanas vecinas.
+  // El grid mensual se amplía a semanas completas (lunes como primer día) para
+  // no tener filas incompletas. La semana y el día ya son exactos y no
+  // necesitan relleno. La agenda, en cambio, lista solo el periodo estricto.
   const gridStart = isMonthly
     ? startOfWeek(periodStart, { weekStartsOn: 1 })
     : periodStart;
@@ -298,13 +302,17 @@ export function CalendarView() {
       ),
   );
   // Total de minutos planificados en el periodo (excluye los días de relleno
-  // que el grid mensual y la agenda incluyen para completar semanas).
+  // que el grid mensual incluye para completar semanas).
   const periodMinutes = (calendar?.days ?? [])
     .filter((day) => day.date >= periodStartKey && day.date <= periodEndKey)
     .reduce((total, day) => total + day.plannedMinutes, 0);
-  // Todos los días del rango pedido: alimentan tanto el grid como la agenda
-  // (incluye relleno en las vistas mensuales).
+  // Días del grid: incluye el relleno de las semanas vecinas en la vista mensual.
   const gridDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  // Días estrictos del periodo: la agenda no debe listar el relleno del grid.
+  const periodDays = eachDayOfInterval({
+    start: periodStart,
+    end: periodEnd,
+  });
 
   // --------------------------------------------------------------------------
   // Estados tempranos: cargando y sin sesión
@@ -339,7 +347,9 @@ export function CalendarView() {
           ------------------------------------------------------------------ */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Selector de vista: Mes / Semana / Día / Agenda */}
+          {/* Selector de vista: Mes / Semana / Día / Agenda.
+              `role="group"` + `aria-label` lo anuncian como un conjunto de
+              botones con nombre; `aria-pressed` indica la vista activa. */}
           <div
             role="group"
             aria-label="Vista del calendario"
@@ -382,7 +392,9 @@ export function CalendarView() {
               Agenda
             </Button>
           </div>
-          {/* Navegación: periodo anterior / título / periodo siguiente / hoy */}
+          {/* Navegación: periodo anterior / título / periodo siguiente / hoy /
+              año. Con `flex-wrap` los controles bajan de línea en pantallas
+              estrechas. */}
           <div
             role="group"
             aria-label="Navegación del periodo"
@@ -397,6 +409,8 @@ export function CalendarView() {
             >
               <ChevronLeft />
             </Button>
+            {/* `aria-live="polite"`: los lectores de pantalla anuncian el nuevo
+                periodo al navegar. El ancho mínimo es menor en móvil. */}
             <h2
               aria-live="polite"
               className="min-w-32 text-center text-base font-semibold capitalize sm:min-w-48 sm:text-lg"
@@ -420,7 +434,8 @@ export function CalendarView() {
             >
               Hoy
             </Button>
-            {/* Selector de año: salta al mismo día/mes del año elegido. */}
+            {/* Selector de año: salta al mismo día/mes del año elegido.
+                La etiqueta es solo para lectores de pantalla (`sr-only`). */}
             <div className="flex items-center gap-1">
               <label htmlFor="calendar-year" className="sr-only">
                 Año
@@ -428,11 +443,19 @@ export function CalendarView() {
               <select
                 id="calendar-year"
                 value={cursorYear}
-                onChange={(event) =>
-                  setCursor((current) =>
-                    setYear(current, Number(event.target.value)),
-                  )
-                }
+                onChange={(event) => {
+                  const nextYear = Number(event.target.value);
+                  setCursor((current) => {
+                    // Se parte del día 1 para evitar que el 29 de febrero salte
+                    // a marzo al elegir un año no bisiesto; luego se restaura
+                    // el día original con tope en el último del mes.
+                    const monthStart = setYear(startOfMonth(current), nextYear);
+                    return setDate(
+                      monthStart,
+                      Math.min(current.getDate(), getDaysInMonth(monthStart)),
+                    );
+                  });
+                }}
                 className="border-border bg-background hover:bg-muted focus-visible:ring-ring/50 h-7 rounded-lg border px-2 text-sm font-medium transition focus-visible:ring-3 focus-visible:outline-none"
               >
                 {yearOptions.map((year) => (
@@ -444,7 +467,8 @@ export function CalendarView() {
             </div>
           </div>
         </div>
-        {/* Resumen del periodo: horas previstas, reales (si hay) y festivos */}
+        {/* Resumen del periodo: horas previstas, reales (si hay) y festivos.
+            Alineado a la izquierda en móvil y a la derecha desde `sm`. */}
         <div className="flex flex-col items-start gap-2 sm:items-end">
           <div className="text-muted-foreground text-sm">
             {calendar === undefined
@@ -552,9 +576,10 @@ export function CalendarView() {
       {calendar === undefined ? (
         <p className="text-muted-foreground text-sm">Cargando calendario…</p>
       ) : view === "agenda" ? (
-        // Listado del mes: una fila por día con el turno, festivos, horas y nota.
+        // Listado del mes: una fila por día del periodo (sin relleno) con el
+        // turno, festivos, horas y nota.
         <ul className="flex flex-col gap-2">
-          {gridDays.map((day) => {
+          {periodDays.map((day) => {
             // Datos de cada fila, buscados por fecha en los Map precalculados.
             const dateKey = format(day, "yyyy-MM-dd");
             const resolved = daysByDate.get(dateKey);
@@ -567,12 +592,16 @@ export function CalendarView() {
             const overtimeMinutes = dayEntry?.overtimeMinutes ?? 0;
             const actualMinutes = dayEntry ? actualMinutesOf(dayEntry) : 0;
             const note = overridesByDate.get(dateKey)?.notes;
+            // Texto que leen los lectores de pantalla en lugar del contenido
+            // visual del botón: fecha completa + nombre del turno o descanso.
             const accessibleLabel = `${format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}, ${
               resolved?.kind === "shift" ? (shift?.name ?? "turno") : "descanso"
             }`;
 
             return (
               <li key={dateKey}>
+                {/* `aria-current="date"` marca el día de hoy para tecnologías
+                    de asistencia (solo se añade en esa fila). */}
                 <button
                   type="button"
                   aria-pressed={selectedDate === dateKey}
@@ -681,7 +710,8 @@ export function CalendarView() {
         </ul>
       ) : (
         // Grid de celdas: 7 columnas en mes y semana, 1 columna en la vista
-        // diaria (donde solo hay una celda, más grande).
+        // diaria (donde solo hay una celda, más grande). Los huecos y alturas
+        // son menores en móvil y crecen desde el breakpoint `sm`.
         <div
           className={cn(
             "grid gap-0.5 sm:gap-1",
@@ -706,6 +736,8 @@ export function CalendarView() {
             const dayEntry = timeEntriesByDate.get(dateKey);
             const overtimeMinutes = dayEntry?.overtimeMinutes ?? 0;
             const actualMinutes = dayEntry ? actualMinutesOf(dayEntry) : 0;
+            // Texto que leen los lectores de pantalla en lugar del contenido
+            // visual de la celda: fecha completa + nombre del turno o descanso.
             const accessibleLabel = `${format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}, ${
               resolved?.kind === "shift" ? (shift?.name ?? "turno") : "descanso"
             }`;
@@ -719,6 +751,8 @@ export function CalendarView() {
                 aria-label={accessibleLabel}
                 onClick={() => setSelectedDate(dateKey)}
                 className={cn(
+                  // Base compacta para móvil (`min-h-20`, `p-1.5`) que se
+                  // amplía desde `sm`.
                   "hover:border-ring focus-visible:ring-ring/50 flex min-h-20 flex-col gap-1 rounded-lg border p-1.5 text-left transition focus-visible:ring-3 focus-visible:outline-none sm:min-h-28 sm:p-2",
                   // La vista semanal da más altura a cada día; la diaria, aún más.
                   view === "week" && "min-h-40 p-2 sm:min-h-56 sm:p-3",
@@ -787,7 +821,9 @@ export function CalendarView() {
                   </span>
                 ) : null}
 
-                {/* Turno planificado (nombre, intervalos y horas) o "Descanso" */}
+                {/* Turno planificado (nombre, intervalos y horas) o "Descanso".
+                    El nombre se trunca con puntos suspensivos si no cabe
+                    (`min-w-0` + `truncate`) y el punto de color no se encoge. */}
                 {resolved?.kind === "shift" ? (
                   <span className="flex flex-col gap-0.5">
                     <span className="flex min-w-0 items-center gap-1 text-xs font-semibold">
