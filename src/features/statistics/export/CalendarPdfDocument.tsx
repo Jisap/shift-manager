@@ -13,6 +13,7 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatHours } from "@/lib/calculations/overtime";
 import type { ExportData } from "@/lib/export/export-data";
 
 // Paleta del documento. Se usan colores hexadecimales fijos porque el PDF no
@@ -64,7 +65,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  // También se reutiliza como estilo base de las celdas de la tabla.
   summaryCell: {
     flex: 1,
     paddingVertical: 4,
@@ -92,12 +92,16 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     paddingVertical: 3,
   },
-  // Anchos de las columnas de la tabla (se combinan con `summaryCell`).
-  cellDate: { width: "12%" },
-  cellWeekday: { width: "13%" },
-  cellShift: { width: "18%" },
-  cellIntervals: { width: "21%" },
-  cellNumber: { width: "9%", textAlign: "right" },
+  // Las celdas de la tabla no usan `flex: 1`: fija la base a 0 y puede ignorar
+  // el ancho declarado. Los anchos de abajo suman 100 %.
+  tableCell: {
+    paddingHorizontal: 4,
+  },
+  cellDate: { width: "11%" },
+  cellWeekday: { width: "12%" },
+  cellShift: { width: "16%" },
+  cellIntervals: { width: "19%" },
+  cellNumber: { width: "8%", textAlign: "right" },
   cellCategory: { width: "18%" },
   // Colores de la diferencia entre horas reales y previstas.
   positive: { color: COLORS.positive },
@@ -114,18 +118,18 @@ const styles = StyleSheet.create({
   },
 });
 
-/** Minutos como horas decimales con dos decimales: 90 → "1.50 h". */
+/** Minutos con el mismo formato que el resto de la app: "2 h 30 min". */
 function hours(minutes: number): string {
-  return `${(minutes / 60).toFixed(2)} h`;
+  return formatHours(minutes);
 }
 
-/** Igual que `hours`, pero con signo explícito: "+1.50 h", "−0.25 h" o "0.00 h". */
+/** Igual que `hours`, pero con signo explícito: "+2 h", "−1 h 30 min" o "0 h". */
 function signedHours(minutes: number): string {
   if (minutes === 0) {
-    return "0.00 h";
+    return "0 h";
   }
   const sign = minutes > 0 ? "+" : "−";
-  return `${sign}${(Math.abs(minutes) / 60).toFixed(2)} h`;
+  return `${sign}${formatHours(Math.abs(minutes))}`;
 }
 
 /**
@@ -243,53 +247,53 @@ export function CalendarPdfDocument({ data }: { data: ExportData }) {
         {/* Tabla del calendario: una fila por día del periodo */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Calendario</Text>
-          {/* Cabecera de la tabla (no se repite en las páginas siguientes) */}
-          <View style={styles.tableHeader}>
-            <Text style={[styles.summaryCell, styles.cellDate]}>Fecha</Text>
-            <Text style={[styles.summaryCell, styles.cellWeekday]}>Día</Text>
-            <Text style={[styles.summaryCell, styles.cellShift]}>Turno</Text>
-            <Text style={[styles.summaryCell, styles.cellIntervals]}>
+          {/* Cabecera de la tabla. `fixed` la repite al principio de cada
+              página, para que las columnas sigan siendo legibles al paginar. */}
+          <View style={styles.tableHeader} fixed>
+            <Text style={[styles.tableCell, styles.cellDate]}>Fecha</Text>
+            <Text style={[styles.tableCell, styles.cellWeekday]}>Día</Text>
+            <Text style={[styles.tableCell, styles.cellShift]}>Turno</Text>
+            <Text style={[styles.tableCell, styles.cellIntervals]}>
               Horario
             </Text>
-            <Text style={[styles.summaryCell, styles.cellNumber]}>Prev.</Text>
-            <Text style={[styles.summaryCell, styles.cellNumber]}>Real</Text>
-            <Text style={[styles.summaryCell, styles.cellNumber]}>Dif.</Text>
-            <Text style={[styles.summaryCell, styles.cellCategory]}>
+            <Text style={[styles.tableCell, styles.cellNumber]}>Prev.</Text>
+            <Text style={[styles.tableCell, styles.cellNumber]}>Real</Text>
+            <Text style={[styles.tableCell, styles.cellNumber]}>Dif.</Text>
+            <Text style={[styles.tableCell, styles.cellCategory]}>
               Categoría
             </Text>
           </View>
           {/* `wrap={false}` evita que una fila se parta entre dos páginas */}
           {data.rows.map((row) => (
             <View key={row.date} style={styles.tableRow} wrap={false}>
-              <Text style={[styles.summaryCell, styles.cellDate]}>
+              <Text style={[styles.tableCell, styles.cellDate]}>
                 {row.date}
               </Text>
-              <Text style={[styles.summaryCell, styles.cellWeekday]}>
+              <Text style={[styles.tableCell, styles.cellWeekday]}>
                 {row.weekday}
               </Text>
-              <Text style={[styles.summaryCell, styles.cellShift]}>
+              <Text style={[styles.tableCell, styles.cellShift]}>
                 {row.shift}
-                {row.isHoliday ? " (festivo)" : ""}
               </Text>
-              <Text style={[styles.summaryCell, styles.cellIntervals]}>
+              <Text style={[styles.tableCell, styles.cellIntervals]}>
                 {row.intervals || "—"}
               </Text>
-              <Text style={[styles.summaryCell, styles.cellNumber]}>
+              <Text style={[styles.tableCell, styles.cellNumber]}>
                 {hours(row.plannedMinutes)}
               </Text>
-              <Text style={[styles.summaryCell, styles.cellNumber]}>
+              <Text style={[styles.tableCell, styles.cellNumber]}>
                 {hours(row.actualMinutes)}
               </Text>
               <Text
                 style={[
-                  styles.summaryCell,
+                  styles.tableCell,
                   styles.cellNumber,
                   differenceStyle(row.differenceMinutes),
                 ]}
               >
                 {signedHours(row.differenceMinutes)}
               </Text>
-              <Text style={[styles.summaryCell, styles.cellCategory]}>
+              <Text style={[styles.tableCell, styles.cellCategory]}>
                 {row.category}
               </Text>
             </View>
