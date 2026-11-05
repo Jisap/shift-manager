@@ -4,7 +4,8 @@
  * DashboardView
  * ----------------------------------------------------------------------------
  * Panel principal del usuario: próximos turnos y descansos, resumen del
- * periodo seleccionado y gráfico comparativo de horas previstas y reales.
+ * periodo seleccionado, gráfico comparativo de horas previstas y reales y
+ * exportación del periodo a CSV o PDF.
  *
  * Los cálculos viven en `src/lib/calculations/statistics.ts`; este componente
  * solo carga datos de Convex, compone el rango y presenta el resultado.
@@ -258,7 +259,8 @@ export function DashboardView() {
     [shifts],
   );
 
-  // Nombres de turno por id, usados por la exportación CSV/PDF.
+  // Nombres de turno por id, usados por la exportación CSV/PDF. A diferencia
+  // de `shiftsById`, solo guarda el nombre (el color no se exporta).
   const shiftNames = useMemo(
     () =>
       new Map((shifts ?? []).map((shift) => [String(shift._id), shift.name])),
@@ -285,7 +287,8 @@ export function DashboardView() {
   }, [calendar, timeEntries, holidays, overrides]);
 
   // Datos de exportación del periodo seleccionado. Se generan una sola vez por
-  // cambio de datos y se reutilizan para CSV y PDF.
+  // cambio de datos y se reutilizan para CSV y PDF. Es `undefined` mientras el
+  // calendario carga o el rango no es válido (la consulta está en "skip").
   const exportData = useMemo(() => {
     if (calendar === undefined) {
       return undefined;
@@ -431,8 +434,8 @@ export function DashboardView() {
       </div>
 
       {/* Filtros del periodo: botones predefinidos, fechas libres (solo en
-          modo "Personalizado") y texto con el rango resultante (solo si es
-          válido) */}
+          modo "Personalizado"), texto con el rango resultante (solo si es
+          válido) y botones de exportación */}
       <div className="flex flex-wrap items-end gap-3">
         <div
           role="group"
@@ -497,7 +500,9 @@ export function DashboardView() {
           </p>
         ) : null}
 
-        {/* Exportación del periodo: solo con un rango válido y datos cargados */}
+        {/* Exportación del periodo: solo se muestra con un rango válido; los
+            botones se desactivan mientras `exportData` aún no está listo.
+            `ml-auto` los empuja al extremo derecho de la fila. */}
         {rangeValid ? (
           <div className="ml-auto">
             <ExportButtons data={exportData} />
