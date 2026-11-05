@@ -92,7 +92,7 @@ Aceptación: panel útil y correcto.
 - [x] CSV en cliente (UTF-8 con BOM).
 - [x] PDF en cliente con `@react-pdf/renderer`.
 - [x] Calendario legible y resumen de horas.
-- [ ] E2E de descarga (pendiente de suite E2E autenticada).
+- [x] E2E de descarga con Playwright (CSV y PDF, con usuario real).
 
 Aceptación: datos exportables e íntegros.
 
