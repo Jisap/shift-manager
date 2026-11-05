@@ -98,11 +98,11 @@ Aceptación: datos exportables e íntegros.
 
 ## Fase 8 — PWA y optimización
 
-- [ ] `app/manifest.ts` e iconos.
-- [ ] Service Worker propio con las estrategias de `ARCHITECTURE.md`.
-- [ ] Página offline.
-- [ ] Verificar que no se cachean datos privados.
-- [ ] Optimización de rendimiento.
+- [x] `app/manifest.ts` e iconos.
+- [x] Service Worker propio con las estrategias de `ARCHITECTURE.md`.
+- [x] Página offline.
+- [x] Verificar que no se cachean datos privados (tests del Service Worker).
+- [ ] Optimización de rendimiento (medición pendiente).
 
 Aceptación: instalable y sin fugas de datos por caché.
 

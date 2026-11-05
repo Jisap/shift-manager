@@ -6,7 +6,7 @@ Sustituye calendarios improvisados y hojas de cálculo por una vista clara del h
 
 ## Estado
 
-**Fase 1 — preparación.** Proyecto Next.js 16 con Tailwind CSS v4, shadcn/ui, esquema Convex desplegado, Convex Auth operativo, Vitest y Playwright. Pendiente: CI. La especificación está cerrada en `shiftManager.md` (v1.3).
+**Fases 1–7 completadas; Fase 8 en curso.** Calendario, horas, estadísticas y exportación funcionando, con PWA instalable, Service Worker y página offline. Pendientes: optimización de rendimiento, CI y E2E autenticados. La especificación está cerrada en `shiftManager.md` (v1.3).
 
 ## Documentación
 

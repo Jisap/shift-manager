@@ -92,8 +92,9 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     paddingVertical: 3,
   },
-  // Las celdas de la tabla no usan `flex: 1`: fija la base a 0 y puede ignorar
-  // el ancho declarado. Los anchos de abajo suman 100 %.
+  // Las celdas de la tabla usan su propio estilo, sin `flex: 1`, para que el
+  // ancho declarado sea el único criterio de reparto y no dependa del motor de
+  // layout. Los anchos de abajo suman 100 %.
   tableCell: {
     paddingHorizontal: 4,
   },
