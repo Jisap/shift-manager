@@ -55,7 +55,9 @@ import {
 } from "@/lib/calculations/statistics";
 import { formatHours } from "@/lib/calculations/overtime";
 import { daysBetweenLocal, isValidLocalDate } from "@/lib/dates/local-date";
+import { buildExportData } from "@/lib/export/export-data";
 import { cn } from "@/lib/utils";
+import { ExportButtons } from "./export/ExportButtons";
 
 // Ventana (en días desde hoy) en la que se busca el próximo turno/descanso.
 const UPCOMING_DAYS = 90;
@@ -147,6 +149,8 @@ function formatDifference(minutes: number): string {
 /**
  * Devuelve el día más temprano del tipo indicado. No depende del orden en que
  * lleguen los días desde el backend.
+ * La comparación es textual (`<`) porque "yyyy-MM-dd" ordena igual que el
+ * calendario; si hubiera dos días con la misma fecha se conserva el primero.
  */
 function earliestDay<T extends { date: string; kind: "shift" | "rest" }>(
   days: T[] | undefined,
@@ -254,6 +258,13 @@ export function DashboardView() {
     [shifts],
   );
 
+  // Nombres de turno por id, usados por la exportación CSV/PDF.
+  const shiftNames = useMemo(
+    () =>
+      new Map((shifts ?? []).map((shift) => [String(shift._id), shift.name])),
+    [shifts],
+  );
+
   // Resumen del periodo. Mientras el calendario carga se devuelve uno vacío;
   // si no, `buildStatistics` combina días, registros de horas, festivos y
   // días extra (excepciones de tipo "extra") y clasifica las horas.
@@ -273,6 +284,22 @@ export function DashboardView() {
     });
   }, [calendar, timeEntries, holidays, overrides]);
 
+  // Datos de exportación del periodo seleccionado. Se generan una sola vez por
+  // cambio de datos y se reutilizan para CSV y PDF.
+  const exportData = useMemo(() => {
+    if (calendar === undefined) {
+      return undefined;
+    }
+    return buildExportData({
+      startDate: range.start,
+      endDate: range.end,
+      timezone: calendar.timezone,
+      days: calendar.days,
+      statistics: summary,
+      shiftNames,
+    });
+  }, [calendar, range.start, range.end, summary, shiftNames]);
+
   // Granularidad del gráfico (día, semana o mes) según la longitud del rango.
   const bucketSize = statisticsBucketSize(range.start, range.end);
   // Datos de Recharts: minutos pasados a horas con un decimal.
@@ -284,8 +311,8 @@ export function DashboardView() {
     }),
   );
 
-  // Primer día con turno y primer descanso de la ventana de próximos días.
-  // Se asume que `days` viene ordenado por fecha.
+  // Próximo turno y próximo descanso de la ventana de próximos días: el día
+  // más temprano de cada tipo, sin depender del orden en que llegue `days`.
   const nextShift = earliestDay(upcoming?.days, "shift");
   const nextRest = earliestDay(upcoming?.days, "rest");
   const nextShiftType =
@@ -374,8 +401,8 @@ export function DashboardView() {
             <CardTitle className="text-xl">
               {nextRest
                 ? format(parseISO(nextRest.date), "EEEE d 'de' MMMM", {
-                    locale: es,
-                  })
+                  locale: es,
+                })
                 : upcoming === undefined
                   ? "Calculando…"
                   : "Sin descansos"}
@@ -404,7 +431,8 @@ export function DashboardView() {
       </div>
 
       {/* Filtros del periodo: botones predefinidos, fechas libres (solo en
-          modo "Personalizado") y texto con el rango resultante */}
+          modo "Personalizado") y texto con el rango resultante (solo si es
+          válido) */}
       <div className="flex flex-wrap items-end gap-3">
         <div
           role="group"
@@ -458,12 +486,22 @@ export function DashboardView() {
           </div>
         ) : null}
 
+        {/* El rango solo se formatea si es válido: con una fecha vacía
+            `parseISO` devuelve una fecha inválida y `format` lanzaría un
+            RangeError. Con rango inválido se muestra el aviso de más abajo. */}
         {rangeValid ? (
           <p className="text-muted-foreground text-sm">
             {format(parseISO(range.start), "d MMM yyyy", { locale: es })}
             {" – "}
             {format(parseISO(range.end), "d MMM yyyy", { locale: es })}
           </p>
+        ) : null}
+
+        {/* Exportación del periodo: solo con un rango válido y datos cargados */}
+        {rangeValid ? (
+          <div className="ml-auto">
+            <ExportButtons data={exportData} />
+          </div>
         ) : null}
       </div>
 

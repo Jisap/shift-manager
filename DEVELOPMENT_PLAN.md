@@ -89,10 +89,10 @@ Aceptación: panel útil y correcto.
 
 ## Fase 7 — Exportación
 
-- [ ] CSV en cliente (UTF-8 con BOM).
-- [ ] PDF en cliente con `@react-pdf/renderer`.
-- [ ] Calendario legible y resumen de horas.
-- [ ] E2E de descarga.
+- [x] CSV en cliente (UTF-8 con BOM).
+- [x] PDF en cliente con `@react-pdf/renderer`.
+- [x] Calendario legible y resumen de horas.
+- [ ] E2E de descarga (pendiente de suite E2E autenticada).
 
 Aceptación: datos exportables e íntegros.
 
