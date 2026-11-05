@@ -6,7 +6,6 @@
  * componente de servidor sin estado: solo informa y ofrece reintentar.
  */
 
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 // Título y descripción de la pestaña para esta página.
@@ -38,7 +37,8 @@ export default function OfflinePage() {
           normalidad; si no, se vuelve a mostrar esta pantalla. */}
       <div>
         <Button asChild>
-          <Link href="/">Reintentar</Link>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- sin red hace falta una navegación completa que pase por el Service Worker */}
+          <a href="/">Reintentar</a>
         </Button>
       </div>
     </main>
