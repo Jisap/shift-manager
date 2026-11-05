@@ -31,7 +31,9 @@ export function ServiceWorkerRegistration() {
     const register = () => {
       void navigator.serviceWorker
         .register("/sw.js", { scope: "/", updateViaCache: "none" })
-        .catch(() => undefined);
+        .catch((error: unknown) => {
+          console.warn("No se pudo registrar el Service Worker:", error);
+        });
     };
 
     // El registro espera a que la página termine de cargar para no competir
