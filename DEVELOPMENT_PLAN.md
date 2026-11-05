@@ -23,7 +23,7 @@ Tareas:
 - [x] Configurar ESLint y Prettier. Husky y lint-staged pendientes (requieren git).
 - [x] Configurar Vitest y Playwright.
 - [x] Definir scripts `dev`, `lint`, `typecheck`, `test`, `test:e2e` y documentarlos en `AGENTS.md`.
-- [ ] CI de GitHub Actions con typecheck, lint y tests (se añadirá tras crear el repositorio; el archivo se retiró porque bloqueaba su creación).
+- [ ] CI de GitHub Actions con typecheck, lint y tests: workflow preparado en `.github/workflows/ci.yml`, pendiente de subir porque el token guardado no tiene el scope `workflow`.
 
 Aceptación:
 

@@ -6,7 +6,7 @@ Sustituye calendarios improvisados y hojas de cálculo por una vista clara del h
 
 ## Estado
 
-**Fases 1–7 completadas; Fase 8 en curso.** Calendario, horas, estadísticas y exportación funcionando, con PWA instalable, Service Worker y página offline. Pendientes: optimización de rendimiento, CI y E2E autenticados. La especificación está cerrada en `shiftManager.md` (v1.3).
+**Fases 1–7 completadas; Fase 8 en curso.** Calendario, horas, estadísticas y exportación funcionando, con PWA instalable, Service Worker y página offline. CI preparado con GitHub Actions, pendiente de subir por permisos del token. Pendientes: optimización de rendimiento y E2E autenticados. La especificación está cerrada en `shiftManager.md` (v1.3).
 
 ## Documentación
 

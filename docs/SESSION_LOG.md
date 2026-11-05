@@ -30,3 +30,4 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-04 22:37 | opencode (deepseek-v4.1)   | Reaplicadas las correcciones del dashboard tras sobrescritura       | [sessions/2026-11-04-2237-opencode.md](sessions/2026-11-04-2237-opencode.md) |
 | 2026-11-05 09:38 | opencode (deepseek-v4.1)   | Fase 7: exportación CSV/PDF en cliente y revisión visual del PDF      | [sessions/2026-11-05-0938-opencode.md](sessions/2026-11-05-0938-opencode.md) |
 | 2026-11-05 22:22 | opencode (deepseek-v4.1-flash-free) | Fase 8: manifest, iconos, Service Worker y página offline | [sessions/2026-11-05-2222-opencode.md](sessions/2026-11-05-2222-opencode.md) |
+| 2026-11-05 22:42 | opencode (deepseek-v4.1-flash-free) | CI preparado; workflow pendiente de subir por permisos del token | [sessions/2026-11-05-2242-opencode.md](sessions/2026-11-05-2242-opencode.md) |
