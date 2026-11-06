@@ -741,16 +741,16 @@ export function CalendarView() {
                 className={cn(
                   // Base compacta para móvil (`min-h-20`, `p-1.5`) que se
                   // amplía desde `sm`.
-                  "hover:border-ring focus-visible:ring-ring/50 flex min-h-20 flex-col gap-1 rounded-lg border p-1.5 text-left transition focus-visible:ring-3 focus-visible:outline-none sm:min-h-28 sm:p-2",
+                  "group relative flex min-h-20 flex-col gap-1 rounded-xl border p-2 text-left transition-all duration-150 focus-visible:ring-3 focus-visible:outline-none sm:min-h-28 sm:p-2.5",
                   // La vista semanal da más altura a cada día; la diaria, aún más.
                   view === "week" && "min-h-40 p-2 sm:min-h-56 sm:p-3",
                   view === "day" && "min-h-72 p-4",
-                  // Los días de relleno se atenúan.
-                  inPeriod ? "bg-card" : "bg-muted/30 text-muted-foreground",
-                  // Hoy: anillo de color primario.
-                  dateKey === todayKey && "ring-primary ring-2",
-                  // Día seleccionado: borde primario.
-                  selectedDate === dateKey && "border-primary",
+                  // Los días de relleno se atenúan sutilmente.
+                  inPeriod ? "bg-card hover:border-primary/50 shadow-2xs" : "bg-muted/30 text-muted-foreground/60 border-border/40",
+                  // Hoy: anillo destacado y fondo distintivo.
+                  dateKey === todayKey && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                  // Día seleccionado: borde y elevación sutil.
+                  selectedDate === dateKey && "border-primary shadow-xs ring-1 ring-primary/40",
                 )}
                 // Si hay turno, el borde y un fondo muy tenue (sufijo hex "12"
                 // = ~7% de opacidad) toman el color del turno.
@@ -767,14 +767,16 @@ export function CalendarView() {
                 <span className="flex items-center justify-between">
                   <span
                     className={cn(
-                      "text-xs font-medium",
-                      dateKey === todayKey && "text-primary",
+                      "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition-colors",
+                      dateKey === todayKey
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-foreground group-hover:text-primary",
                     )}
                   >
                     {format(day, "d")}
                   </span>
                   {resolved?.source === "override" ? (
-                    <span className="bg-foreground/10 rounded px-1 text-[10px] uppercase">
+                    <span className="rounded bg-primary/10 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
                       Cambio
                     </span>
                   ) : null}
