@@ -24,6 +24,20 @@ import {
   startOfYear,
 } from "date-fns";
 import { es } from "date-fns/locale";
+import {
+  Briefcase,
+  CalendarClock,
+  ClipboardCheck,
+  Clock,
+  Coffee,
+  Flame,
+  Minus,
+  PartyPopper,
+  Timer,
+  TrendingDown,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -354,9 +368,20 @@ export function DashboardView() {
       {/* Próximo turno y próximo descanso */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Próximo turno: nombre con su color, fecha, horario y duración */}
-        <Card>
+        <Card className="border-border/70 relative overflow-hidden rounded-2xl shadow-2xs transition-shadow hover:shadow-sm">
+          <div
+            className="from-primary/70 via-primary/30 absolute inset-x-0 top-0 h-1 bg-gradient-to-r to-transparent"
+            aria-hidden
+          />
           <CardHeader>
-            <CardDescription>Próximo turno</CardDescription>
+            <div className="flex items-center gap-2.5">
+              <span className="bg-primary/10 text-primary flex size-9 items-center justify-center rounded-xl">
+                <CalendarClock className="size-5" aria-hidden />
+              </span>
+              <CardDescription className="text-xs font-medium tracking-wide uppercase">
+                Próximo turno
+              </CardDescription>
+            </div>
             <CardTitle className="flex items-center gap-2 text-xl">
               {nextShiftType ? (
                 <span
@@ -369,15 +394,16 @@ export function DashboardView() {
                 (upcoming === undefined ? "Calculando…" : "Sin turnos")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-muted-foreground flex flex-col gap-1 text-sm">
+          <CardContent className="text-muted-foreground flex flex-col gap-1.5 text-sm">
             {nextShift ? (
               <>
-                <span className="text-foreground font-medium capitalize">
+                <span className="text-foreground flex flex-wrap items-center gap-2 font-medium capitalize">
                   {format(parseISO(nextShift.date), "EEEE d 'de' MMMM", {
                     locale: es,
                   })}
-                  {" · "}
-                  {daysUntilLabel(today, nextShift.date)}
+                  <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold normal-case">
+                    {daysUntilLabel(today, nextShift.date)}
+                  </span>
                 </span>
                 <span>
                   {nextShift.intervals
@@ -398,27 +424,40 @@ export function DashboardView() {
         </Card>
 
         {/* Próximo descanso: fecha, cuánto falta y enlace al calendario */}
-        <Card>
+        <Card className="border-border/70 relative overflow-hidden rounded-2xl shadow-2xs transition-shadow hover:shadow-sm">
+          <div
+            className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/70 via-emerald-500/30 to-transparent"
+            aria-hidden
+          />
           <CardHeader>
-            <CardDescription>Próximo descanso</CardDescription>
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Coffee className="size-5" aria-hidden />
+              </span>
+              <CardDescription className="text-xs font-medium tracking-wide uppercase">
+                Próximo descanso
+              </CardDescription>
+            </div>
             <CardTitle className="text-xl">
               {nextRest
                 ? format(parseISO(nextRest.date), "EEEE d 'de' MMMM", {
-                  locale: es,
-                })
+                    locale: es,
+                  })
                 : upcoming === undefined
                   ? "Calculando…"
                   : "Sin descansos"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">
+          <CardContent className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
             {nextRest ? (
               <>
-                <span className="text-foreground font-medium">
+                <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                   {daysUntilLabel(today, nextRest.date)}
                 </span>
-                {" · "}
-                <Link className="underline" href="/calendar">
+                <Link
+                  className="text-foreground hover:text-primary font-medium underline underline-offset-4 transition-colors"
+                  href="/calendar"
+                >
                   Ver calendario
                 </Link>
               </>
@@ -440,7 +479,7 @@ export function DashboardView() {
         <div
           role="group"
           aria-label="Periodo de las estadísticas"
-          className="bg-muted flex items-center gap-1 rounded-lg p-1"
+          className="bg-muted/60 ring-border/60 flex items-center gap-1 rounded-xl p-1 ring-1"
         >
           {(Object.keys(FILTER_LABELS) as FilterMode[]).map((mode) => (
             <Button
@@ -493,7 +532,7 @@ export function DashboardView() {
             `parseISO` devuelve una fecha inválida y `format` lanzaría un
             RangeError. Con rango inválido se muestra el aviso de más abajo. */}
         {rangeValid ? (
-          <p className="text-muted-foreground text-sm">
+          <p className="border-border/60 bg-card text-muted-foreground rounded-full border px-3 py-1 text-xs font-medium">
             {format(parseISO(range.start), "d MMM yyyy", { locale: es })}
             {" – "}
             {format(parseISO(range.end), "d MMM yyyy", { locale: es })}
@@ -523,16 +562,34 @@ export function DashboardView() {
             <SummaryCard
               label="Horas previstas"
               value={formatHours(summary.plannedMinutes)}
+              icon={Clock}
+              iconClassName="bg-primary/10 text-primary"
             />
             <SummaryCard
               label="Horas reales"
               value={formatHours(summary.actualMinutes)}
+              icon={Timer}
+              iconClassName="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
             />
             {/* La diferencia se colorea: verde si se trabajó de más, rojo si
                 de menos y neutro si coincide con lo previsto */}
             <SummaryCard
               label="Diferencia"
               value={formatDifference(summary.differenceMinutes)}
+              icon={
+                summary.differenceMinutes === 0
+                  ? Minus
+                  : summary.differenceMinutes > 0
+                    ? TrendingUp
+                    : TrendingDown
+              }
+              iconClassName={
+                summary.differenceMinutes === 0
+                  ? "bg-muted text-muted-foreground"
+                  : summary.differenceMinutes > 0
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+              }
               tone={
                 summary.differenceMinutes === 0
                   ? "neutral"
@@ -544,13 +601,32 @@ export function DashboardView() {
             <SummaryCard
               label="Horas extra"
               value={formatHours(summary.overtimeMinutes)}
+              icon={Flame}
+              iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
             />
-            <SummaryCard label="Jornadas" value={String(summary.shiftDays)} />
-            <SummaryCard label="Descansos" value={String(summary.restDays)} />
-            <SummaryCard label="Festivos" value={String(summary.holidayDays)} />
+            <SummaryCard
+              label="Jornadas"
+              value={String(summary.shiftDays)}
+              icon={Briefcase}
+              iconClassName="bg-sky-500/10 text-sky-600 dark:text-sky-400"
+            />
+            <SummaryCard
+              label="Descansos"
+              value={String(summary.restDays)}
+              icon={Coffee}
+              iconClassName="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+            />
+            <SummaryCard
+              label="Festivos"
+              value={String(summary.holidayDays)}
+              icon={PartyPopper}
+              iconClassName="bg-rose-500/10 text-rose-600 dark:text-rose-400"
+            />
             <SummaryCard
               label="Días registrados"
               value={String(summary.recordedDays)}
+              icon={ClipboardCheck}
+              iconClassName="bg-slate-500/10 text-slate-600 dark:text-slate-300"
             />
           </div>
 
@@ -583,8 +659,8 @@ export function DashboardView() {
 
           {/* Gráfico comparativo: barras de horas previstas y reales por
               día, semana o mes según la longitud del periodo */}
-          <Card>
-            <CardHeader>
+          <Card className="border-border/70 rounded-2xl shadow-2xs">
+            <CardHeader className="border-border/60 border-b pb-4">
               <CardTitle>Previstas frente a reales</CardTitle>
               <CardDescription>
                 Horas agrupadas por{" "}
@@ -596,7 +672,7 @@ export function DashboardView() {
                 .
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               {calendar === undefined ? (
                 <p className="text-muted-foreground text-sm">Cargando…</p>
               ) : chartData.length === 0 ? (
@@ -604,27 +680,57 @@ export function DashboardView() {
                   No hay datos en este periodo.
                 </p>
               ) : (
-                <div className="h-72 w-full">
+                <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="label" fontSize={11} />
-                      <YAxis unit=" h" fontSize={11} width={48} />
+                    <BarChart data={chartData} barGap={4}>
+                      <CartesianGrid
+                        stroke="var(--color-border)"
+                        strokeDasharray="4 4"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="label"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                      />
+                      <YAxis
+                        unit=" h"
+                        fontSize={11}
+                        width={48}
+                        tickLine={false}
+                        axisLine={false}
+                      />
                       <Tooltip
+                        cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
+                        contentStyle={{
+                          backgroundColor: "var(--color-card)",
+                          borderColor: "var(--color-border)",
+                          borderRadius: 12,
+                          fontSize: 12,
+                          boxShadow: "0 4px 12px rgb(0 0 0 / 0.08)",
+                        }}
+                        labelStyle={{
+                          color: "var(--color-foreground)",
+                          fontWeight: 600,
+                        }}
                         formatter={(value) => `${Number(value).toFixed(1)} h`}
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                       <Bar
                         dataKey="previstas"
                         name="Previstas"
                         fill="var(--color-chart-3)"
-                        radius={[4, 4, 0, 0]}
+                        radius={[6, 6, 0, 0]}
+                        maxBarSize={48}
                       />
                       <Bar
                         dataKey="reales"
                         name="Reales"
                         fill="var(--color-chart-2)"
-                        radius={[4, 4, 0, 0]}
+                        radius={[6, 6, 0, 0]}
+                        maxBarSize={48}
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -645,19 +751,34 @@ export function DashboardView() {
 function SummaryCard({
   label,
   value,
+  icon: Icon,
+  iconClassName,
   tone = "neutral",
 }: {
   label: string;
   value: string;
+  icon: LucideIcon;
+  iconClassName?: string;
   tone?: "neutral" | "positive" | "negative";
 }) {
   return (
-    <Card>
+    <Card className="border-border/70 relative overflow-hidden rounded-2xl shadow-2xs transition-shadow hover:shadow-sm">
+      <span
+        className={cn(
+          "absolute top-3 right-3 flex size-8 items-center justify-center rounded-xl",
+          iconClassName,
+        )}
+        aria-hidden
+      >
+        <Icon className="size-4" />
+      </span>
       <CardHeader className="gap-1">
-        <CardDescription>{label}</CardDescription>
+        <CardDescription className="pr-10 text-xs font-medium tracking-wide uppercase">
+          {label}
+        </CardDescription>
         <CardTitle
           className={cn(
-            "text-2xl",
+            "text-2xl font-semibold tracking-tight tabular-nums",
             tone === "positive" && "text-emerald-600 dark:text-emerald-400",
             tone === "negative" && "text-rose-600 dark:text-rose-400",
           )}
@@ -686,7 +807,12 @@ function CategoryBadge({
     return null;
   }
   return (
-    <span className={cn("rounded px-2 py-1 font-medium", className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium shadow-2xs ring-1 ring-black/5 ring-inset dark:ring-white/10",
+        className,
+      )}
+    >
       {label} {formatHours(minutes)}
     </span>
   );

@@ -22,6 +22,7 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-06 13:14 | Antigravity (Gemini 3.8 Flash) | Limpieza de títulos redundantes en /signin, calendario y páginas      | [sessions/2026-11-06-1314-antigravity.md](sessions/2026-11-06-1314-antigravity.md) |
 | 2026-11-06 13:20 | Antigravity (Gemini 3.8 Flash) | Fase 3 Estilización de celdas, indicador "Hoy" y cuadrícula de fechas | [sessions/2026-11-06-1320-antigravity.md](sessions/2026-11-06-1320-antigravity.md) |
 | 2026-11-06 13:27 | Antigravity (Gemini 3.8 Flash) | Fase 4 Rediseño completo de la portada con Hero y tarjetas de acceso  | [sessions/2026-11-06-1327-antigravity.md](sessions/2026-11-06-1327-antigravity.md) |
+| 2026-11-06 13:40 | opencode (deepseek-v4.1-flash-free) | Pulido visual del Dashboard: tarjetas de métricas, próximos turnos y gráfico | [sessions/2026-11-06-1340-opencode.md](sessions/2026-11-06-1340-opencode.md) |
 | 2026-11-03 11:06 | opencode (deepseek-v4.1)   | Clasificación y conteo mensual de horas por categoría                 | [sessions/2026-11-03-1106-opencode.md](sessions/2026-11-03-1106-opencode.md) |
 | 2026-11-03 22:30 | opencode (deepseek-v4.1)   | Vista semanal del calendario reutilizando el grid y la clasificación  | [sessions/2026-11-03-2230-opencode.md](sessions/2026-11-03-2230-opencode.md) |
 | 2026-11-04 10:09 | opencode (deepseek-v4.1)   | Vista diaria y agenda/listado del calendario en `CalendarView`        | [sessions/2026-11-04-1009-opencode.md](sessions/2026-11-04-1009-opencode.md) |
