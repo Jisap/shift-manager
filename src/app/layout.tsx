@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { Providers } from "@/components/providers";
+import { AppHeader } from "@/components/layout/AppHeader";
 import "./globals.css";
 
 // Fuentes de Google cargadas con `next/font` (se autoalojan en la compilación,
@@ -68,7 +69,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             por carga de página. */}
         <Providers>
           <ServiceWorkerRegistration />
-          {children}
+          <AppHeader />
+          <div className="flex-1">{children}</div>
         </Providers>
       </body>
     </html>

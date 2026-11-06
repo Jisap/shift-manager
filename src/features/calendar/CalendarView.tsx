@@ -53,10 +53,7 @@ import {
   sumClassifiedMinutes,
 } from "@/lib/calculations/classification";
 import { formatHours } from "@/lib/calculations/overtime";
-import { DayActualEditor } from "./DayActualEditor";
-import { DayHolidayEditor } from "./DayHolidayEditor";
-import { DayOvertimeEditor } from "./DayOvertimeEditor";
-import { DayOverrideEditor } from "./DayOverrideEditor";
+import { DayEditorSheet } from "./DayEditorSheet";
 
 // Cabecera de columnas del grid. El orden empieza en lunes, igual que
 // `weekStartsOn: 1` en las funciones de date-fns más abajo.
@@ -527,48 +524,22 @@ export function CalendarView() {
       </div>
 
       {/* ------------------------------------------------------------------
-          Panel de edición del día seleccionado (cuatro editores)
+          Panel de edición del día seleccionado (organizado en pestañas)
           ------------------------------------------------------------------ */}
       {selectedDate ? (
-        // La `key` incluye el id de la excepción (o "new") para que React
-        // destruya y recree el editor al cambiar de día o al guardar/eliminar.
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {/* Cambio puntual de turno (excepción) para este día */}
-          <DayOverrideEditor
-            key={`${selectedDate}-${selectedOverride?._id ?? "new"}`}
-            date={selectedDate}
-            shifts={shifts ?? []}
-            existing={selectedOverride}
-            onClose={() => setSelectedDate(null)}
-          />
-          {/* Horas reales de entrada/salida y descanso. La key depende de
-              inicio/fin para reiniciar el formulario cuando cambian. */}
-          <DayActualEditor
-            key={`${selectedDate}-actual-${selectedOvertime?.actualStart ?? "none"}-${selectedOvertime?.actualEnd ?? "none"}`}
-            date={selectedDate}
-            timezone={calendar?.timezone ?? "Europe/Madrid"}
-            plannedMinutes={selectedResolved?.plannedMinutes ?? 0}
-            shiftTypeId={selectedShift?._id}
-            shiftIntervals={selectedResolved?.intervals ?? []}
-            existing={selectedOvertime}
-          />
-          {/* Horas extra del día */}
-          <DayOvertimeEditor
-            key={`${selectedDate}-${selectedOvertime?.overtimeMinutes ?? "none"}`}
-            date={selectedDate}
-            isHoliday={selectedHolidays.length > 0}
-            shiftTypeId={selectedShift?._id}
-            shiftName={selectedShift?.name}
-            shiftIntervals={selectedResolved?.intervals ?? []}
-            existing={selectedOvertime}
-          />
-          {/* Alta/baja de festivos del día. La key cambia con el nº de festivos. */}
-          <DayHolidayEditor
-            key={`${selectedDate}-holidays-${selectedHolidays.length}`}
-            date={selectedDate}
-            holidays={selectedHolidays}
-          />
-        </div>
+        <DayEditorSheet
+          date={selectedDate}
+          onClose={() => setSelectedDate(null)}
+          shifts={shifts ?? []}
+          selectedOverride={selectedOverride}
+          timezone={calendar?.timezone ?? "Europe/Madrid"}
+          plannedMinutes={selectedResolved?.plannedMinutes ?? 0}
+          shiftTypeId={selectedShift?._id}
+          shiftIntervals={selectedResolved?.intervals ?? []}
+          selectedOvertime={selectedOvertime}
+          selectedShift={selectedShift}
+          selectedHolidays={selectedHolidays}
+        />
       ) : null}
 
       {/* ------------------------------------------------------------------
