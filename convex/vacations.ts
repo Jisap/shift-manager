@@ -4,12 +4,16 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { buildVacationBalance } from "../src/lib/calculations/vacations";
-import { isValidLocalDate } from "../src/lib/dates/local-date";
+import {
+  daysBetweenLocal,
+  isValidLocalDate,
+} from "../src/lib/dates/local-date";
 
 const MIN_YEAR = 1970;
 const MAX_YEAR = 2100;
 const MAX_ALLOCATED_DAYS = 366;
 const MAX_NOTE_LENGTH = 500;
+const MAX_RANGE_DAYS = 366;
 
 type DbContext = QueryCtx | MutationCtx;
 type UserId = Id<"users">;
@@ -45,6 +49,31 @@ function yearRange(year: number): { startDate: string; endDate: string } {
     startDate: `${year}-01-01`,
     endDate: `${year}-12-31`,
   };
+}
+
+/**
+ * Valida que el rango de fechas sea correcto, esté en orden y no supere el
+ * máximo permitido de 366 días.
+ */
+function validateRange(startDate: string, endDate: string): void {
+  if (!isValidLocalDate(startDate) || !isValidLocalDate(endDate)) {
+    throw new ConvexError({
+      code: "VALIDATION_ERROR",
+      message: "El rango de fechas no es válido",
+    });
+  }
+  if (endDate < startDate) {
+    throw new ConvexError({
+      code: "VALIDATION_ERROR",
+      message: "La fecha final no puede ser anterior a la inicial",
+    });
+  }
+  if (daysBetweenLocal(startDate, endDate) > MAX_RANGE_DAYS) {
+    throw new ConvexError({
+      code: "VALIDATION_ERROR",
+      message: `El rango no puede superar ${MAX_RANGE_DAYS} días`,
+    });
+  }
 }
 
 /** Normaliza la nota opcional de un día de vacaciones. */
@@ -98,6 +127,25 @@ async function syncUsedDays(
     });
   }
 }
+
+/** Días de vacaciones del usuario en un rango de fechas, ordenados por fecha. */
+export const listRange = query({
+  args: { startDate: v.string(), endDate: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    validateRange(args.startDate, args.endDate);
+    const days = await ctx.db
+      .query("vacations")
+      .withIndex("by_user_date", (q) =>
+        q
+          .eq("userId", userId)
+          .gte("date", args.startDate)
+          .lte("date", args.endDate),
+      )
+      .collect();
+    return days.sort((left, right) => left.date.localeCompare(right.date));
+  },
+});
 
 /** Días de vacaciones del usuario en un año, ordenados por fecha. */
 export const listYear = query({

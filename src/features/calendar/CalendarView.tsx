@@ -199,6 +199,11 @@ export function CalendarView() {
     api.holidays.listRange,
     isAuthenticated ? { startDate, endDate } : "skip",
   );
+  // Vacaciones registradas en el rango (indicador de solo lectura).
+  const vacations = useQuery(
+    api.vacations.listRange,
+    isAuthenticated ? { startDate, endDate } : "skip",
+  );
   // Registros de horas reales y horas extra por día.
   const timeEntries = useQuery(
     api.timeEntries.listRange,
@@ -239,6 +244,11 @@ export function CalendarView() {
     }
     return map;
   }, [holidays]);
+  // Fechas con vacaciones registradas, para pintar el indicador del día.
+  const vacationDates = useMemo(
+    () => new Set((vacations ?? []).map((vacation) => vacation.date)),
+    [vacations],
+  );
 
   // --------------------------------------------------------------------------
   // Datos del día seleccionado (se pasan a los editores)
@@ -584,7 +594,7 @@ export function CalendarView() {
             // visual del botón: fecha completa + nombre del turno o descanso.
             const accessibleLabel = `${format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}, ${
               resolved?.kind === "shift" ? (shift?.name ?? "turno") : "descanso"
-            }`;
+            }${vacationDates.has(dateKey) ? ", vacaciones" : ""}`;
 
             return (
               <li key={dateKey}>
@@ -672,6 +682,11 @@ export function CalendarView() {
                   {/* Columna 3: etiquetas de festivos, horas reales y horas
                       extra del día, alineadas a la derecha */}
                   <span className="flex flex-wrap items-center justify-end gap-1.5 text-[11px]">
+                    {vacationDates.has(dateKey) ? (
+                      <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-medium text-emerald-700 dark:text-emerald-300">
+                        Vacaciones
+                      </span>
+                    ) : null}
                     {dayHolidays.map((holiday) => (
                       <span
                         key={holiday._id}
@@ -728,7 +743,7 @@ export function CalendarView() {
             // visual de la celda: fecha completa + nombre del turno o descanso.
             const accessibleLabel = `${format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}, ${
               resolved?.kind === "shift" ? (shift?.name ?? "turno") : "descanso"
-            }`;
+            }${vacationDates.has(dateKey) ? ", vacaciones" : ""}`;
 
             return (
               <button
@@ -781,6 +796,13 @@ export function CalendarView() {
                     </span>
                   ) : null}
                 </span>
+
+                {/* Día de vacaciones registrado (indicador de solo lectura) */}
+                {vacationDates.has(dateKey) ? (
+                  <span className="self-start rounded bg-emerald-500/15 px-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                    Vacaciones
+                  </span>
+                ) : null}
 
                 {/* Etiquetas de festivo (puede haber varias) */}
                 {dayHolidays.length > 0 ? (
