@@ -62,6 +62,22 @@ export interface StatisticsSummary {
   days: StatisticsDay[];
 }
 
+/**
+ * Indicadores derivados del resumen. Devuelven `null` cuando el denominador
+ * es cero, para que la interfaz pueda mostrar un guion en lugar de un valor
+ * engañoso.
+ */
+export interface StatisticsRates {
+  /** Horas reales sobre horas previstas, en porcentaje. */
+  compliancePercent: number | null;
+  /** Minutos previstos medios por jornada programada. */
+  averagePlannedPerShiftDay: number | null;
+  /** Minutos reales medios por día con registro. */
+  averageActualPerRecordedDay: number | null;
+  /** Horas extra sobre horas reales, en porcentaje. */
+  overtimeSharePercent: number | null;
+}
+
 export type StatisticsBucketSize = "day" | "week" | "month";
 
 export interface StatisticsBucket {
@@ -144,6 +160,42 @@ export function buildStatistics(input: StatisticsInput): StatisticsSummary {
     holidayDays: days.filter((day) => day.isHoliday).length,
     recordedDays: days.filter((day) => day.actualMinutes > 0).length,
     days,
+  };
+}
+
+/**
+ * Calcula indicadores derivados del resumen. Es una función pura que solo
+ * divide totales ya calculados; no altera ni recalcula las horas.
+ */
+export function statisticsRates(
+  summary: Pick<
+    StatisticsSummary,
+    | "plannedMinutes"
+    | "actualMinutes"
+    | "overtimeMinutes"
+    | "shiftDays"
+    | "recordedDays"
+  >,
+): StatisticsRates {
+  const roundToTenth = (value: number) => Math.round(value * 10) / 10;
+
+  return {
+    compliancePercent:
+      summary.plannedMinutes > 0
+        ? roundToTenth((summary.actualMinutes / summary.plannedMinutes) * 100)
+        : null,
+    averagePlannedPerShiftDay:
+      summary.shiftDays > 0
+        ? Math.round(summary.plannedMinutes / summary.shiftDays)
+        : null,
+    averageActualPerRecordedDay:
+      summary.recordedDays > 0
+        ? Math.round(summary.actualMinutes / summary.recordedDays)
+        : null,
+    overtimeSharePercent:
+      summary.actualMinutes > 0
+        ? roundToTenth((summary.overtimeMinutes / summary.actualMinutes) * 100)
+        : null,
   };
 }
 

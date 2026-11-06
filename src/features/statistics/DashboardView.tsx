@@ -31,6 +31,7 @@ import {
   Clock,
   Coffee,
   Flame,
+  Gauge,
   Minus,
   PartyPopper,
   Timer,
@@ -66,6 +67,7 @@ import {
   buildStatistics,
   emptyStatisticsSummary,
   statisticsBucketSize,
+  statisticsRates,
   type StatisticsBucketSize,
 } from "@/lib/calculations/statistics";
 import { formatHours } from "@/lib/calculations/overtime";
@@ -159,6 +161,21 @@ function formatDifference(minutes: number): string {
     return "0 h";
   }
   return `${minutes > 0 ? "+" : "−"}${formatHours(Math.abs(minutes))}`;
+}
+
+/** Porcentaje con un decimal, o "—" cuando no hay datos suficientes. */
+function formatPercent(value: number | null): string {
+  if (value === null) {
+    return "—";
+  }
+  return `${value.toLocaleString("es-ES", {
+    maximumFractionDigits: 1,
+  })} %`;
+}
+
+/** Minutos formateados como horas, o "—" cuando no hay datos. */
+function formatMinutesOrDash(minutes: number | null): string {
+  return minutes === null ? "—" : formatHours(minutes);
 }
 
 /**
@@ -299,6 +316,15 @@ export function DashboardView() {
       ),
     });
   }, [calendar, timeEntries, holidays, overrides]);
+
+  // Indicadores derivados de los totales del periodo (cumplimiento, medias y
+  // peso de las horas extra). La función es pura y no vuelve a calcular horas.
+  const rates = useMemo(() => statisticsRates(summary), [summary]);
+  // Anchura de la barra de cumplimiento, acotada al rango 0–100.
+  const complianceWidth =
+    rates.compliancePercent === null
+      ? 0
+      : Math.min(100, Math.max(0, rates.compliancePercent));
 
   // Datos de exportación del periodo seleccionado. Se generan una sola vez por
   // cambio de datos y se reutilizan para CSV y PDF. Es `undefined` mientras el
@@ -630,6 +656,69 @@ export function DashboardView() {
             />
           </div>
 
+          {/* Indicadores derivados: cumplimiento y medias del periodo */}
+          <Card className="border-border/70 rounded-2xl shadow-2xs">
+            <CardHeader className="border-border/60 border-b pb-4">
+              <div className="flex items-center gap-2.5">
+                <span className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-lg">
+                  <Gauge className="size-4" aria-hidden />
+                </span>
+                <div>
+                  <CardTitle>Rendimiento del periodo</CardTitle>
+                  <CardDescription>
+                    Indicadores calculados a partir de las horas del periodo.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-6 pt-4">
+              <div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                    Cumplimiento
+                  </span>
+                  <span className="text-xl font-semibold tracking-tight tabular-nums">
+                    {formatPercent(rates.compliancePercent)}
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label="Cumplimiento de las horas previstas"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={rates.compliancePercent ?? 0}
+                  className="bg-muted mt-2 h-2 overflow-hidden rounded-full"
+                >
+                  <div
+                    className="bg-primary h-full rounded-full transition-[width] duration-300"
+                    style={{ width: `${complianceWidth}%` }}
+                  />
+                </div>
+                <p className="text-muted-foreground mt-1.5 text-xs">
+                  Horas reales sobre horas previstas.
+                </p>
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-3">
+                <RateMetric
+                  label="Media por jornada"
+                  value={formatMinutesOrDash(rates.averagePlannedPerShiftDay)}
+                  hint="Horas previstas entre jornadas"
+                />
+                <RateMetric
+                  label="Media real por día"
+                  value={formatMinutesOrDash(rates.averageActualPerRecordedDay)}
+                  hint="Horas reales entre días registrados"
+                />
+                <RateMetric
+                  label="Peso de las extras"
+                  value={formatPercent(rates.overtimeSharePercent)}
+                  hint="Horas extra sobre horas reales"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Desglose por categoría (mismos colores que en el calendario);
               `CategoryBadge` no pinta las categorías sin horas */}
           {summary.classified.total > 0 ? (
@@ -787,6 +876,32 @@ function SummaryCard({
         </CardTitle>
       </CardHeader>
     </Card>
+  );
+}
+
+/**
+ * Indicador de rendimiento: etiqueta, valor destacado y una pista breve sobre
+ * cómo se calcula.
+ */
+function RateMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        {label}
+      </span>
+      <span className="text-xl font-semibold tracking-tight tabular-nums">
+        {value}
+      </span>
+      <span className="text-muted-foreground text-xs">{hint}</span>
+    </div>
   );
 }
 

@@ -6,6 +6,7 @@ import {
   buildStatistics,
   emptyStatisticsSummary,
   statisticsBucketSize,
+  statisticsRates,
   type StatisticsDay,
 } from "./statistics";
 
@@ -125,6 +126,54 @@ describe("buildStatistics", () => {
       extraDates: new Set(),
     });
     expect(summary).toEqual(emptyStatisticsSummary());
+  });
+});
+
+describe("statisticsRates", () => {
+  it("calcula cumplimiento, medias y peso de las horas extra", () => {
+    const rates = statisticsRates({
+      plannedMinutes: 960,
+      actualMinutes: 930,
+      overtimeMinutes: 180,
+      shiftDays: 2,
+      recordedDays: 3,
+    });
+
+    expect(rates.compliancePercent).toBe(96.9);
+    expect(rates.averagePlannedPerShiftDay).toBe(480);
+    expect(rates.averageActualPerRecordedDay).toBe(310);
+    expect(rates.overtimeSharePercent).toBe(19.4);
+  });
+
+  it("devuelve null cuando no hay datos para el denominador", () => {
+    const rates = statisticsRates({
+      plannedMinutes: 0,
+      actualMinutes: 0,
+      overtimeMinutes: 0,
+      shiftDays: 0,
+      recordedDays: 0,
+    });
+
+    expect(rates).toEqual({
+      compliancePercent: null,
+      averagePlannedPerShiftDay: null,
+      averageActualPerRecordedDay: null,
+      overtimeSharePercent: null,
+    });
+  });
+
+  it("distingue cero real de ausencia de previstas", () => {
+    const rates = statisticsRates({
+      plannedMinutes: 480,
+      actualMinutes: 0,
+      overtimeMinutes: 0,
+      shiftDays: 1,
+      recordedDays: 0,
+    });
+
+    expect(rates.compliancePercent).toBe(0);
+    expect(rates.averageActualPerRecordedDay).toBeNull();
+    expect(rates.overtimeSharePercent).toBeNull();
   });
 });
 
