@@ -19,6 +19,7 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-03 10:46 | opencode (deepseek-v4.1)   | Registro de horas reales con pausas y comparación con lo previsto     | [sessions/2026-11-03-1046-opencode.md](sessions/2026-11-03-1046-opencode.md) |
 | 2026-11-06 09:20 | Antigravity (Gemini 3.8 Flash) | Diagnóstico UI/UX, plan de rediseño visual y verificación del estado  | [sessions/2026-11-06-0920-antigravity.md](sessions/2026-11-06-0920-antigravity.md) |
 | 2026-11-06 13:05 | Antigravity (Gemini 3.8 Flash) | Fase 1 AppHeader y Fase 2 DayEditorSheet con pestañas en calendario   | [sessions/2026-11-06-1305-antigravity.md](sessions/2026-11-06-1305-antigravity.md) |
+| 2026-11-06 13:14 | Antigravity (Gemini 3.8 Flash) | Limpieza de títulos redundantes en /signin, calendario y páginas      | [sessions/2026-11-06-1314-antigravity.md](sessions/2026-11-06-1314-antigravity.md) |
 | 2026-11-03 11:06 | opencode (deepseek-v4.1)   | Clasificación y conteo mensual de horas por categoría                 | [sessions/2026-11-03-1106-opencode.md](sessions/2026-11-03-1106-opencode.md) |
 | 2026-11-03 22:30 | opencode (deepseek-v4.1)   | Vista semanal del calendario reutilizando el grid y la clasificación  | [sessions/2026-11-03-2230-opencode.md](sessions/2026-11-03-2230-opencode.md) |
 | 2026-11-04 10:09 | opencode (deepseek-v4.1)   | Vista diaria y agenda/listado del calendario en `CalendarView`        | [sessions/2026-11-04-1009-opencode.md](sessions/2026-11-04-1009-opencode.md) |
