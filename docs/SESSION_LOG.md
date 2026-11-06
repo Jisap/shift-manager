@@ -25,6 +25,7 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-06 13:40 | opencode (deepseek-v4.1-flash-free) | Pulido visual del Dashboard: tarjetas de métricas, próximos turnos y gráfico | [sessions/2026-11-06-1340-opencode.md](sessions/2026-11-06-1340-opencode.md) |
 | 2026-11-06 13:46 | opencode (deepseek-v4.1-flash-free) | Validación PWA sobre build de producción: manifest, SW, offline e iconos | [sessions/2026-11-06-1346-opencode.md](sessions/2026-11-06-1346-opencode.md) |
 | 2026-11-06 13:49 | opencode (deepseek-v4.1-flash-free) | Fase 9: indicadores de rendimiento del periodo en el Dashboard (97 tests) | [sessions/2026-11-06-1349-opencode.md](sessions/2026-11-06-1349-opencode.md) |
+| 2026-11-06 13:59 | opencode (deepseek-v4.1-flash-free) | Fase 9: módulo de vacaciones (saldo anual, días y página `/vacations`) | [sessions/2026-11-06-1359-opencode.md](sessions/2026-11-06-1359-opencode.md) |
 | 2026-11-03 11:06 | opencode (deepseek-v4.1)   | Clasificación y conteo mensual de horas por categoría                 | [sessions/2026-11-03-1106-opencode.md](sessions/2026-11-03-1106-opencode.md) |
 | 2026-11-03 22:30 | opencode (deepseek-v4.1)   | Vista semanal del calendario reutilizando el grid y la clasificación  | [sessions/2026-11-03-2230-opencode.md](sessions/2026-11-03-2230-opencode.md) |
 | 2026-11-04 10:09 | opencode (deepseek-v4.1)   | Vista diaria y agenda/listado del calendario en `CalendarView`        | [sessions/2026-11-04-1009-opencode.md](sessions/2026-11-04-1009-opencode.md) |

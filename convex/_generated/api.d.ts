@@ -16,6 +16,7 @@ import type * as overrides from "../overrides.js";
 import type * as patterns from "../patterns.js";
 import type * as shiftTypes from "../shiftTypes.js";
 import type * as timeEntries from "../timeEntries.js";
+import type * as vacations from "../vacations.js";
 
 import type {
   ApiFromModules,
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   patterns: typeof patterns;
   shiftTypes: typeof shiftTypes;
   timeEntries: typeof timeEntries;
+  vacations: typeof vacations;
 }>;
 
 /**

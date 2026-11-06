@@ -166,6 +166,19 @@ Las tablas de autenticación las define `@convex-dev/auth` (usuarios, sesiones, 
 
 Índices: `by_user_date(userId, date)`, `by_user_year(userId, date)`.
 
+### vacations
+
+```ts
+{
+  userId: v.id("users"),
+  date: v.string(),
+  note: v.optional(v.string()),
+  updatedAt: v.number(),
+}
+```
+
+Índice: `by_user_date(userId, date)`. Un día de vacaciones por usuario y fecha.
+
 ### vacationBalances
 
 ```ts
@@ -179,6 +192,10 @@ Las tablas de autenticación las define `@convex-dev/auth` (usuarios, sesiones, 
 
 Índice: `by_user_year(userId, year)`.
 
+`allocatedDays` lo define el usuario. `usedDays` es una caché del número de
+días de `vacations` del año: la fuente de verdad son los días registrados y
+`getBalance` vuelve a contarlos en cada consulta.
+
 ## 4. Relaciones
 
 ```text
@@ -187,6 +204,7 @@ users 1─N shiftPatterns 1─N patternDays N─1 shiftTypes
 users 1─N scheduleOverrides N─1 shiftTypes
 users 1─N timeEntries    N─1 shiftTypes
 users 1─N holidays
+users 1─N vacations
 users 1─N vacationBalances
 ```
 

@@ -10,6 +10,7 @@ import {
   LogOut,
   LogIn,
   Menu,
+  Palmtree,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -23,6 +24,7 @@ const NAV_LINKS = [
   { href: "/calendar", label: "Calendario", icon: CalendarDays },
   { href: "/shifts", label: "Turnos", icon: Clock },
   { href: "/patterns", label: "Patrones", icon: Layers },
+  { href: "/vacations", label: "Vacaciones", icon: Palmtree },
 ];
 
 /**

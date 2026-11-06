@@ -103,6 +103,13 @@ export default defineSchema({
     ),
   }).index("by_user_date", ["userId", "date"]),
 
+  vacations: defineTable({
+    userId: v.id("users"),
+    date: v.string(),
+    note: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_user_date", ["userId", "date"]),
+
   vacationBalances: defineTable({
     userId: v.id("users"),
     year: v.number(),
