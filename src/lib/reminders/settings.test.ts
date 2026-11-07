@@ -4,6 +4,7 @@ import {
   MAX_LEAD_MINUTES,
   MIN_LEAD_MINUTES,
   isValidLeadMinutes,
+  reminderSettingsSignature,
   validateReminderSettings,
 } from "./settings";
 
@@ -27,6 +28,24 @@ describe("reminder settings", () => {
     expect(isValidLeadMinutes(MAX_LEAD_MINUTES + 1)).toBe(false);
     expect(isValidLeadMinutes(30.5)).toBe(false);
     expect(isValidLeadMinutes(Number.NaN)).toBe(false);
+  });
+
+  it("genera una firma estable y distingue cualquier cambio", () => {
+    expect(reminderSettingsSignature(DEFAULT_REMINDER_SETTINGS)).toBe(
+      "false|30|true",
+    );
+    expect(
+      reminderSettingsSignature({
+        ...DEFAULT_REMINDER_SETTINGS,
+        enabled: true,
+      }),
+    ).not.toBe(reminderSettingsSignature(DEFAULT_REMINDER_SETTINGS));
+    expect(
+      reminderSettingsSignature({
+        ...DEFAULT_REMINDER_SETTINGS,
+        leadMinutes: 60,
+      }),
+    ).not.toBe(reminderSettingsSignature(DEFAULT_REMINDER_SETTINGS));
   });
 
   it("valida los ajustes completos", () => {

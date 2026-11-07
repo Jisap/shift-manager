@@ -27,6 +27,14 @@ export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
 export const MIN_LEAD_MINUTES = 0;
 export const MAX_LEAD_MINUTES = 1440;
 
+/**
+ * Firma estable de los ajustes. Permite comparar si un cambio recibido del
+ * servidor es distinto del que ya está en el formulario.
+ */
+export function reminderSettingsSignature(settings: ReminderSettings): string {
+  return `${settings.enabled}|${settings.leadMinutes}|${settings.notifyChanges}`;
+}
+
 /** Comprueba que la antelación sea un entero dentro del rango admitido. */
 export function isValidLeadMinutes(value: number): boolean {
   return (

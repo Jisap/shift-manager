@@ -38,6 +38,7 @@ import {
 import {
   MAX_LEAD_MINUTES,
   MIN_LEAD_MINUTES,
+  reminderSettingsSignature,
   type ReminderSettings,
 } from "@/lib/reminders/settings";
 import { convexErrorMessage } from "@/lib/utils/convex-error";
@@ -177,12 +178,14 @@ function PermissionCard({
             size="sm"
             variant="outline"
             className="gap-1.5"
-            disabled={!supported || permission === "granted"}
+            disabled={
+              !supported || permission === "granted" || permission === "denied"
+            }
             onClick={onRequestPermission}
           >
             <Bell className="size-4" aria-hidden />
             {permission === "denied"
-              ? "Revisar permisos"
+              ? "Permiso bloqueado"
               : "Permitir notificaciones"}
           </Button>
           {/* Notificación de prueba: solo con el permiso concedido */}
@@ -221,6 +224,32 @@ function ReminderForm({
   const [error, setError] = useState<string | null>(null);
   // Indica que el último guardado salió bien; se apaga al tocar cualquier campo.
   const [saved, setSaved] = useState(false);
+
+  // Si los ajustes cambian desde otro dispositivo con esta pantalla abierta,
+  // el formulario se refresca con los valores nuevos para no pisarlos al
+  // guardar. Si el cambio coincide con lo que ya hay en pantalla (por ejemplo,
+  // justo después de guardar aquí), no se toca nada y se conserva el aviso.
+  const [baseSignature, setBaseSignature] = useState(() =>
+    reminderSettingsSignature(settings),
+  );
+  const incomingSignature = reminderSettingsSignature(settings);
+  if (baseSignature !== incomingSignature) {
+    setBaseSignature(incomingSignature);
+    const draftLead =
+      leadMinutes.trim() === "" ? Number.NaN : Number(leadMinutes);
+    const draftSignature = reminderSettingsSignature({
+      enabled,
+      leadMinutes: draftLead,
+      notifyChanges,
+    });
+    if (draftSignature !== incomingSignature) {
+      setEnabled(settings.enabled);
+      setLeadMinutes(String(settings.leadMinutes));
+      setNotifyChanges(settings.notifyChanges);
+      setSaved(false);
+      setError(null);
+    }
+  }
 
   /**
    * Valida la antelación en el cliente (entero dentro de los límites) y, si es
