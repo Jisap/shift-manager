@@ -13,7 +13,17 @@
  */
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Bell, BellRing, Save, Send } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  BellOff,
+  BellRing,
+  CheckCircle2,
+  Clock,
+  HelpCircle,
+  Save,
+  Send,
+} from "lucide-react";
 import { useState, useSyncExternalStore, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -26,6 +36,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   notificationPermissionSnapshot,
   notificationPermissionServerSnapshot,
@@ -43,52 +54,57 @@ import {
 } from "@/lib/reminders/settings";
 import { convexErrorMessage } from "@/lib/utils/convex-error";
 
-/** Texto y color del estado del permiso de notificaciones. */
-function permissionLabel(permission: NotificationPermissionState): {
-  text: string;
-  tone: string;
-} {
+/** Opciones rápidas de antelación para facilitar la selección. */
+const QUICK_LEAD_PRESETS = [
+  { label: "15 min", minutes: 15 },
+  { label: "30 min", minutes: 30 },
+  { label: "1 hora", minutes: 60 },
+  { label: "2 horas", minutes: 120 },
+  { label: "1 día", minutes: 1440 },
+];
+
+/** Metadatos visuales del estado del permiso de notificaciones. */
+function permissionBadge(permission: NotificationPermissionState) {
   switch (permission) {
     case "granted":
-      return { text: "Permiso concedido", tone: "text-emerald-600" };
+      return {
+        text: "Permiso concedido",
+        className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+        icon: CheckCircle2,
+      };
     case "denied":
       return {
-        text: "Permiso bloqueado. Actívalo en los ajustes del navegador.",
-        tone: "text-destructive",
+        text: "Permiso bloqueado",
+        className: "bg-destructive/15 text-destructive border-destructive/30",
+        icon: BellOff,
       };
     case "unsupported":
       return {
-        text: "Este navegador no admite notificaciones.",
-        tone: "text-muted-foreground",
+        text: "No compatible",
+        className: "bg-muted text-muted-foreground border-border",
+        icon: AlertCircle,
       };
-    // Estado "default": el usuario aún no ha respondido a la petición.
     default:
       return {
-        text: "Todavía no has concedido permiso.",
-        tone: "text-muted-foreground",
+        text: "Pendiente de conceder",
+        className: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+        icon: HelpCircle,
       };
   }
 }
 
 export function ReminderSettingsView() {
-  // Estado de la sesión de Convex. Sin sesión no se lanzan las queries.
   const { isAuthenticated, isLoading } = useConvexAuth();
-  // Ajustes guardados del usuario (`undefined` mientras cargan).
   const settings = useQuery(
     api.reminders.getSettings,
     isAuthenticated ? {} : "skip",
   );
-  // El permiso es un sistema externo: `useSyncExternalStore` evita leerlo
-  // durante el renderizado del servidor y mantiene la interfaz al día.
   const permission = useSyncExternalStore(
     subscribeNotificationPermission,
     notificationPermissionSnapshot,
     notificationPermissionServerSnapshot,
   );
 
-  // Pide el permiso al navegador y avisa a los suscriptores del cambio: la API
-  // de permisos no siempre emite un evento, así que se notifica a mano para
-  // que la interfaz se actualice al instante.
   async function handleRequestPermission() {
     await requestNotificationPermission();
     notifyPermissionChanged();
@@ -100,7 +116,7 @@ export function ReminderSettingsView() {
 
   if (!isAuthenticated) {
     return (
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md rounded-2xl shadow-2xs">
         <CardHeader>
           <CardTitle>Inicia sesión</CardTitle>
           <CardDescription>
@@ -122,10 +138,11 @@ export function ReminderSettingsView() {
         permission={permission}
         onRequestPermission={() => void handleRequestPermission()}
       />
-      {/* El formulario solo se monta cuando ya hay ajustes: así sus campos
-          nacen con los valores guardados. */}
       {settings === undefined ? (
-        <p className="text-muted-foreground text-sm">Cargando ajustes…</p>
+        <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+          <Clock className="size-4 animate-spin" />
+          <span>Cargando ajustes…</span>
+        </div>
       ) : (
         <ReminderForm settings={settings} permission={permission} />
       )}
@@ -133,7 +150,7 @@ export function ReminderSettingsView() {
   );
 }
 
-/** Tarjeta con el estado del permiso y las acciones asociadas. */
+/** Tarjeta refinada con el estado del permiso y acciones asociadas. */
 function PermissionCard({
   permission,
   onRequestPermission,
@@ -141,46 +158,56 @@ function PermissionCard({
   permission: NotificationPermissionState;
   onRequestPermission: () => void;
 }) {
-  const status = permissionLabel(permission);
+  const badge = permissionBadge(permission);
+  const BadgeIcon = badge.icon;
   const supported = permission !== "unsupported";
 
-  // Lanza una notificación de ejemplo para comprobar que el permiso, el
-  // navegador y el service worker funcionan. Al pulsarla abre `/settings`.
   async function handleTestNotification() {
     await showBrowserNotification({
       title: "ShiftManager",
-      body: "Las notificaciones funcionan correctamente.",
+      body: "Las notificaciones funcionan correctamente en este dispositivo.",
       tag: "shiftmanager-test",
       url: "/settings",
     });
   }
 
   return (
-    <Card className="border-border/70 rounded-2xl shadow-2xs">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BellRing className="text-primary size-4" aria-hidden />
-          Permiso del navegador
-        </CardTitle>
-        <CardDescription>
-          Las notificaciones se conceden por dispositivo. Debes permitirlas en
-          cada navegador o instalación donde quieras recibirlas.
+    <Card className="border-border/80 rounded-2xl shadow-2xs overflow-hidden">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <BellRing className="size-4" aria-hidden />
+            </div>
+            Permiso del dispositivo
+          </CardTitle>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+              badge.className
+            )}
+          >
+            <BadgeIcon className="size-3.5" />
+            {badge.text}
+          </span>
+        </div>
+        <CardDescription className="text-xs sm:text-sm">
+          Las notificaciones se configuran de forma independiente en cada navegador o dispositivo que utilices.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {/* Estado actual del permiso, con color según el caso */}
-        <p className={`text-sm font-medium ${status.tone}`}>{status.text}</p>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Pedir permiso: se desactiva si el navegador no lo admite, si ya
-              está concedido o si está bloqueado. En este último caso el
-              navegador ignoraría una nueva petición, así que el botón solo
-              informa ("Permiso bloqueado") y el texto de arriba explica que
-              hay que activarlo en los ajustes del navegador. */}
+      <CardContent className="flex flex-col gap-4">
+        {permission === "denied" ? (
+          <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-2.5">
+            Las notificaciones están bloqueadas en este navegador. Debes hacer clic en el candado o icono de permisos de la barra de direcciones para habilitarlas.
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button
             type="button"
             size="sm"
-            variant="outline"
-            className="gap-1.5"
+            variant={permission === "granted" ? "outline" : "default"}
+            className="gap-1.5 shadow-2xs"
             disabled={
               !supported || permission === "granted" || permission === "denied"
             }
@@ -189,18 +216,20 @@ function PermissionCard({
             <Bell className="size-4" aria-hidden />
             {permission === "denied"
               ? "Permiso bloqueado"
-              : "Permitir notificaciones"}
+              : permission === "granted"
+                ? "Permiso concedido"
+                : "Solicitar permiso"}
           </Button>
-          {/* Notificación de prueba: solo con el permiso concedido */}
+
           <Button
             type="button"
             size="sm"
-            variant="ghost"
-            className="gap-1.5"
+            variant="outline"
+            className="gap-1.5 shadow-2xs"
             disabled={permission !== "granted"}
             onClick={() => void handleTestNotification()}
           >
-            <Send className="size-4" aria-hidden />
+            <Send className="size-4 text-primary" aria-hidden />
             Probar notificación
           </Button>
         </div>
@@ -209,7 +238,7 @@ function PermissionCard({
   );
 }
 
-/** Formulario de recordatorios. Solo se monta cuando ya hay ajustes. */
+/** Formulario de recordatorios estilizado con controles refinados. */
 function ReminderForm({
   settings,
   permission,
@@ -218,33 +247,19 @@ function ReminderForm({
   permission: NotificationPermissionState;
 }) {
   const updateSettings = useMutation(api.reminders.updateSettings);
-  // Los campos parten de los ajustes guardados. La antelación se guarda como
-  // texto para poder editar el input libremente y se convierte al validar.
   const [enabled, setEnabled] = useState(settings.enabled);
   const [leadMinutes, setLeadMinutes] = useState(String(settings.leadMinutes));
   const [notifyChanges, setNotifyChanges] = useState(settings.notifyChanges);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Indica que el último guardado salió bien; se apaga al tocar cualquier campo.
   const [saved, setSaved] = useState(false);
 
-  // Si los ajustes cambian desde otro dispositivo con esta pantalla abierta,
-  // el formulario se refresca con los valores nuevos para no pisarlos al
-  // guardar. Si el cambio coincide con lo que ya hay en pantalla (por ejemplo,
-  // justo después de guardar aquí), no se toca nada y se conserva el aviso.
-  // Se compara una "firma" de los ajustes y el estado se ajusta durante el
-  // renderizado (patrón de React para reaccionar a un cambio de props) en lugar
-  // de usar un efecto, que provocaría un render intermedio con datos viejos.
-  // Contrapartida: si había ediciones sin guardar que no coinciden con lo
-  // recibido, se descartan en favor de los ajustes nuevos.
   const [baseSignature, setBaseSignature] = useState(() =>
     reminderSettingsSignature(settings),
   );
   const incomingSignature = reminderSettingsSignature(settings);
   if (baseSignature !== incomingSignature) {
     setBaseSignature(incomingSignature);
-    // Borrador actual en pantalla; una antelación vacía se trata como NaN
-    // (no válida) para que no se confunda con el valor 0.
     const draftLead =
       leadMinutes.trim() === "" ? Number.NaN : Number(leadMinutes);
     const draftSignature = reminderSettingsSignature({
@@ -261,10 +276,6 @@ function ReminderForm({
     }
   }
 
-  /**
-   * Valida la antelación en el cliente (entero dentro de los límites) y, si es
-   * correcta, guarda los ajustes en Convex.
-   */
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -295,119 +306,209 @@ function ReminderForm({
     }
   }
 
+  const currentMinutes = Number(leadMinutes);
+
   return (
-    <Card className="border-border/70 rounded-2xl shadow-2xs">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="text-primary size-4" aria-hidden />
-          Recordatorios de turno
+    <Card className="border-border/80 rounded-2xl shadow-2xs overflow-hidden">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Bell className="size-4" aria-hidden />
+          </div>
+          Configuración de avisos
         </CardTitle>
-        <CardDescription>
-          El aviso se muestra mientras ShiftManager esté abierto o instalado en
-          segundo plano. No se envían notificaciones con la aplicación
-          completamente cerrada.
+        <CardDescription className="text-xs sm:text-sm">
+          Los recordatorios se muestran en este dispositivo mientras la aplicación esté abierta o instalada como PWA en segundo plano.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSave} className="flex flex-col gap-5">
-          {/* Interruptor general de recordatorios. Cada cambio de campo
-              apaga el mensaje "guardado" para no dar una confirmación vieja. */}
-          <div className="flex items-start gap-3">
+          {/* Fila 1: Interruptor general */}
+          <div
+            onClick={() => {
+              setEnabled((prev) => !prev);
+              setSaved(false);
+            }}
+            className={cn(
+              "flex cursor-pointer items-center justify-between rounded-xl border p-3.5 transition-all duration-150 select-none",
+              enabled
+                ? "border-primary/40 bg-primary/5 shadow-2xs"
+                : "border-border/70 bg-card hover:bg-muted/40"
+            )}
+          >
+            <div className="flex flex-col gap-0.5 pr-4">
+              <Label htmlFor="reminders-enabled" className="cursor-pointer font-semibold text-sm">
+                Activar recordatorios
+              </Label>
+              <p className="text-muted-foreground text-xs">
+                Recibe un aviso automático antes del comienzo de cada turno.
+              </p>
+            </div>
+            {/* Switch estilizado */}
+            <div
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                enabled ? "bg-primary" : "bg-muted-foreground/30"
+              )}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform",
+                  enabled ? "translate-x-5" : "translate-x-0.5"
+                )}
+              />
+            </div>
             <input
               id="reminders-enabled"
               type="checkbox"
               checked={enabled}
-              onChange={(event) => {
-                setEnabled(event.target.checked);
-                setSaved(false);
-              }}
-              className="accent-primary mt-0.5 size-4"
+              onChange={() => {}}
+              className="sr-only"
             />
-            <div className="flex flex-col gap-0.5">
-              <Label htmlFor="reminders-enabled">Activar recordatorios</Label>
-              <p className="text-muted-foreground text-xs">
-                Avisa antes de que empiece el próximo turno.
-              </p>
+          </div>
+
+          {/* Fila 2: Antelación y opciones rápidas */}
+          <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 p-3.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="reminders-lead" className="text-xs font-semibold text-foreground">
+                Antelación del aviso
+              </Label>
+              <span className="text-xs font-medium text-muted-foreground">
+                {currentMinutes === 60
+                  ? "1 hora antes"
+                  : currentMinutes === 120
+                    ? "2 horas antes"
+                    : currentMinutes === 1440
+                      ? "1 día antes"
+                      : `${currentMinutes || 0} min antes`}
+              </span>
+            </div>
+
+            {/* Chips de selección rápida */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {QUICK_LEAD_PRESETS.map((preset) => {
+                const isSelected = currentMinutes === preset.minutes;
+                return (
+                  <button
+                    key={preset.minutes}
+                    type="button"
+                    onClick={() => {
+                      setLeadMinutes(String(preset.minutes));
+                      setSaved(false);
+                    }}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors border",
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground shadow-xs font-semibold"
+                        : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Input manual */}
+            <div className="flex items-center gap-2 pt-2">
+              <Input
+                id="reminders-lead"
+                type="number"
+                min={MIN_LEAD_MINUTES}
+                max={MAX_LEAD_MINUTES}
+                step={1}
+                value={leadMinutes}
+                onChange={(event) => {
+                  setLeadMinutes(event.target.value);
+                  setSaved(false);
+                }}
+                className="h-8 w-24 text-center font-medium"
+              />
+              <span className="text-xs text-muted-foreground">
+                minutos exactos ({MIN_LEAD_MINUTES} a {MAX_LEAD_MINUTES})
+              </span>
             </div>
           </div>
 
-          {/* Antelación en minutos, limitada por MIN/MAX_LEAD_MINUTES */}
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="reminders-lead" className="text-xs">
-              Antelación (minutos)
-            </Label>
-            <Input
-              id="reminders-lead"
-              type="number"
-              min={MIN_LEAD_MINUTES}
-              max={MAX_LEAD_MINUTES}
-              step={1}
-              value={leadMinutes}
-              onChange={(event) => {
-                setLeadMinutes(event.target.value);
-                setSaved(false);
-              }}
-              className="h-9 w-32"
-            />
-            <p className="text-muted-foreground text-xs">
-              Entre {MIN_LEAD_MINUTES} y {MAX_LEAD_MINUTES} minutos antes del
-              inicio.
-            </p>
-          </div>
-
-          {/* Aviso cuando cambia el próximo turno (solo con la app abierta) */}
-          <div className="flex items-start gap-3">
+          {/* Fila 3: Aviso de cambios */}
+          <div
+            onClick={() => {
+              setNotifyChanges((prev) => !prev);
+              setSaved(false);
+            }}
+            className={cn(
+              "flex cursor-pointer items-center justify-between rounded-xl border p-3.5 transition-all duration-150 select-none",
+              notifyChanges
+                ? "border-primary/40 bg-primary/5 shadow-2xs"
+                : "border-border/70 bg-card hover:bg-muted/40"
+            )}
+          >
+            <div className="flex flex-col gap-0.5 pr-4">
+              <Label htmlFor="reminders-changes" className="cursor-pointer font-semibold text-sm">
+                Avisar de cambios en el próximo turno
+              </Label>
+              <p className="text-muted-foreground text-xs">
+                Emite una notificación si un cambio o excepción afecta al turno que estás esperando.
+              </p>
+            </div>
+            {/* Switch estilizado */}
+            <div
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                notifyChanges ? "bg-primary" : "bg-muted-foreground/30"
+              )}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform",
+                  notifyChanges ? "translate-x-5" : "translate-x-0.5"
+                )}
+              />
+            </div>
             <input
               id="reminders-changes"
               type="checkbox"
               checked={notifyChanges}
-              onChange={(event) => {
-                setNotifyChanges(event.target.checked);
-                setSaved(false);
-              }}
-              className="accent-primary mt-0.5 size-4"
+              onChange={() => {}}
+              className="sr-only"
             />
-            <div className="flex flex-col gap-0.5">
-              <Label htmlFor="reminders-changes">
-                Avisar de cambios en el próximo turno
-              </Label>
-              <p className="text-muted-foreground text-xs">
-                Solo se comprueba mientras la aplicación está abierta.
-              </p>
-            </div>
           </div>
 
-          {/* Recordatorio de que sin permiso los avisos no se pueden mostrar,
-              aunque los ajustes se guarden igualmente */}
+          {/* Aviso si falta permiso */}
           {permission !== "granted" ? (
-            <p className="text-muted-foreground text-xs">
-              Concede el permiso de notificaciones para que los avisos puedan
-              mostrarse.
-            </p>
+            <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-700 dark:text-amber-400">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>
+                Recuerda autorizar el permiso de notificaciones arriba para que tu dispositivo pueda mostrar los avisos programados.
+              </span>
+            </div>
           ) : null}
 
-          {/* Error de validación o del backend (`role="alert"` para lectores
-              de pantalla) y confirmación de guardado (`role="status"`) */}
+          {/* Mensajes de error o éxito */}
           {error !== null ? (
-            <p className="text-destructive text-sm" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {saved ? (
-            <p className="text-sm font-medium text-emerald-600" role="status">
-              Recordatorios guardados.
-            </p>
+            <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive" role="alert">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{error}</span>
+            </div>
           ) : null}
 
-          <div>
+          {saved ? (
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400" role="status">
+              <CheckCircle2 className="size-4 shrink-0" />
+              <span>Ajustes de recordatorios guardados correctamente.</span>
+            </div>
+          ) : null}
+
+          {/* Botón Guardar */}
+          <div className="pt-1">
             <Button
               type="submit"
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 shadow-2xs"
               disabled={saving}
             >
               <Save className="size-4" aria-hidden />
-              {saving ? "Guardando…" : "Guardar recordatorios"}
+              {saving ? "Guardando…" : "Guardar ajustes"}
             </Button>
           </div>
         </form>
