@@ -6,6 +6,10 @@
  * Configura los recordatorios del próximo turno: permiso del navegador,
  * interruptor general, antelación y aviso de cambios. Los ajustes se guardan
  * en Convex; el permiso es local de cada dispositivo.
+ *
+ * Se compone de dos tarjetas: `PermissionCard` (estado del permiso y prueba) y
+ * `ReminderForm` (ajustes guardados). Quien programa y muestra los avisos es
+ * `ReminderScheduler`; esta vista solo los configura.
  */
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
@@ -56,6 +60,7 @@ function permissionLabel(permission: NotificationPermissionState): {
         text: "Este navegador no admite notificaciones.",
         tone: "text-muted-foreground",
       };
+    // Estado "default": el usuario aún no ha respondido a la petición.
     default:
       return {
         text: "Todavía no has concedido permiso.",
@@ -65,7 +70,9 @@ function permissionLabel(permission: NotificationPermissionState): {
 }
 
 export function ReminderSettingsView() {
+  // Estado de la sesión de Convex. Sin sesión no se lanzan las queries.
   const { isAuthenticated, isLoading } = useConvexAuth();
+  // Ajustes guardados del usuario (`undefined` mientras cargan).
   const settings = useQuery(
     api.reminders.getSettings,
     isAuthenticated ? {} : "skip",
@@ -78,6 +85,9 @@ export function ReminderSettingsView() {
     notificationPermissionServerSnapshot,
   );
 
+  // Pide el permiso al navegador y avisa a los suscriptores del cambio: la API
+  // de permisos no siempre emite un evento, así que se notifica a mano para
+  // que la interfaz se actualice al instante.
   async function handleRequestPermission() {
     await requestNotificationPermission();
     notifyPermissionChanged();
@@ -111,6 +121,8 @@ export function ReminderSettingsView() {
         permission={permission}
         onRequestPermission={() => void handleRequestPermission()}
       />
+      {/* El formulario solo se monta cuando ya hay ajustes: así sus campos
+          nacen con los valores guardados. */}
       {settings === undefined ? (
         <p className="text-muted-foreground text-sm">Cargando ajustes…</p>
       ) : (
@@ -131,6 +143,8 @@ function PermissionCard({
   const status = permissionLabel(permission);
   const supported = permission !== "unsupported";
 
+  // Lanza una notificación de ejemplo para comprobar que el permiso, el
+  // navegador y el service worker funcionan. Al pulsarla abre `/settings`.
   async function handleTestNotification() {
     await showBrowserNotification({
       title: "ShiftManager",
@@ -153,8 +167,11 @@ function PermissionCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        {/* Estado actual del permiso, con color según el caso */}
         <p className={`text-sm font-medium ${status.tone}`}>{status.text}</p>
         <div className="flex flex-wrap items-center gap-2">
+          {/* Pedir permiso: se desactiva si el navegador no lo admite o si ya
+              está concedido. Si está bloqueado, el texto del botón cambia. */}
           <Button
             type="button"
             size="sm"
@@ -168,6 +185,7 @@ function PermissionCard({
               ? "Revisar permisos"
               : "Permitir notificaciones"}
           </Button>
+          {/* Notificación de prueba: solo con el permiso concedido */}
           <Button
             type="button"
             size="sm"
@@ -194,13 +212,20 @@ function ReminderForm({
   permission: NotificationPermissionState;
 }) {
   const updateSettings = useMutation(api.reminders.updateSettings);
+  // Los campos parten de los ajustes guardados. La antelación se guarda como
+  // texto para poder editar el input libremente y se convierte al validar.
   const [enabled, setEnabled] = useState(settings.enabled);
   const [leadMinutes, setLeadMinutes] = useState(String(settings.leadMinutes));
   const [notifyChanges, setNotifyChanges] = useState(settings.notifyChanges);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Indica que el último guardado salió bien; se apaga al tocar cualquier campo.
   const [saved, setSaved] = useState(false);
 
+  /**
+   * Valida la antelación en el cliente (entero dentro de los límites) y, si es
+   * correcta, guarda los ajustes en Convex.
+   */
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -246,6 +271,8 @@ function ReminderForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSave} className="flex flex-col gap-5">
+          {/* Interruptor general de recordatorios. Cada cambio de campo
+              apaga el mensaje "guardado" para no dar una confirmación vieja. */}
           <div className="flex items-start gap-3">
             <input
               id="reminders-enabled"
@@ -265,6 +292,7 @@ function ReminderForm({
             </div>
           </div>
 
+          {/* Antelación en minutos, limitada por MIN/MAX_LEAD_MINUTES */}
           <div className="flex flex-col gap-1">
             <Label htmlFor="reminders-lead" className="text-xs">
               Antelación (minutos)
@@ -288,6 +316,7 @@ function ReminderForm({
             </p>
           </div>
 
+          {/* Aviso cuando cambia el próximo turno (solo con la app abierta) */}
           <div className="flex items-start gap-3">
             <input
               id="reminders-changes"
@@ -309,6 +338,8 @@ function ReminderForm({
             </div>
           </div>
 
+          {/* Recordatorio de que sin permiso los avisos no se pueden mostrar,
+              aunque los ajustes se guarden igualmente */}
           {permission !== "granted" ? (
             <p className="text-muted-foreground text-xs">
               Concede el permiso de notificaciones para que los avisos puedan
@@ -316,6 +347,8 @@ function ReminderForm({
             </p>
           ) : null}
 
+          {/* Error de validación o del backend (`role="alert"` para lectores
+              de pantalla) y confirmación de guardado (`role="status"`) */}
           {error !== null ? (
             <p className="text-destructive text-sm" role="alert">
               {error}
