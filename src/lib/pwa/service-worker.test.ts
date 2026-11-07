@@ -10,6 +10,11 @@ const SOURCE = readFileSync(
 
 type Listener = (event: unknown) => void;
 
+// Se lee la versión del propio service worker para que el test no dependa de
+// un número concreto al cambiar la caché.
+const CACHE_VERSION =
+  /const CACHE_VERSION = "([^"]+)"/.exec(SOURCE)?.[1] ?? "shiftmanager";
+
 function basicResponse(body: string, status = 200) {
   const response = new Response(body, { status });
   Object.defineProperty(response, "type", { value: "basic" });
@@ -64,13 +69,17 @@ function loadServiceWorker(fetchImpl: typeof fetch) {
       listeners.set(type, handler);
     },
     skipWaiting: vi.fn(async () => undefined),
-    clients: { claim: vi.fn(async () => undefined) },
+    clients: {
+      claim: vi.fn(async () => undefined),
+      matchAll: vi.fn(async () => []),
+      openWindow: vi.fn(async () => undefined),
+    },
   };
 
   const { caches, stores } = createCaches();
   new Function("self", "caches", "fetch", SOURCE)(self, caches, fetchImpl);
 
-  return { listeners, stores };
+  return { listeners, stores, self };
 }
 
 function dispatchLifecycle(
@@ -110,13 +119,32 @@ describe("service worker", () => {
 
     await dispatchLifecycle(listeners, "install");
 
-    const offlineCache = stores.get("shiftmanager-v1-offline");
+    const offlineCache = stores.get(`${CACHE_VERSION}-offline`);
     expect(offlineCache?.cache.add).toHaveBeenCalledTimes(4);
     expect(offlineCache?.store.has(`${ORIGIN}/offline`)).toBe(true);
-    expect(offlineCache?.store.has(`${ORIGIN}/manifest.webmanifest`)).toBe(true);
-    expect(
-      offlineCache?.store.has(`${ORIGIN}/icons/icon-192.png`),
-    ).toBe(true);
+    expect(offlineCache?.store.has(`${ORIGIN}/manifest.webmanifest`)).toBe(
+      true,
+    );
+    expect(offlineCache?.store.has(`${ORIGIN}/icons/icon-192.png`)).toBe(true);
+  });
+
+  it("abre la URL de la notificación al pulsarla", async () => {
+    const { listeners, self } = loadServiceWorker(vi.fn());
+    let pending: Promise<void> | undefined;
+    const event = {
+      notification: {
+        close: vi.fn(),
+        data: { url: "/calendar" },
+      },
+      waitUntil: (promise: Promise<void>) => {
+        pending = promise;
+      },
+    };
+
+    listeners.get("notificationclick")?.(event);
+    await pending;
+
+    expect(self.clients.openWindow).toHaveBeenCalledWith(`${ORIGIN}/calendar`);
   });
 
   it("nunca intercepta peticiones no GET ni de otro origen", () => {

@@ -12,6 +12,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { Providers } from "@/components/providers";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { ReminderScheduler } from "@/features/reminders/ReminderScheduler";
 import "./globals.css";
 
 // Fuentes de Google cargadas con `next/font` (se autoalojan en la compilación,
@@ -63,12 +64,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       {/* El body ocupa al menos toda la altura y es una columna flexible, de
           modo que el contenido de las páginas pueda estirarse a pantalla
           completa. */}
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col">
         {/* Proveedores globales (p. ej. Convex y autenticación). El registro
             del service worker va dentro, no pinta nada y se ejecuta una vez
             por carga de página. */}
         <Providers>
           <ServiceWorkerRegistration />
+          <ReminderScheduler />
           <AppHeader />
           <div className="flex-1">{children}</div>
         </Providers>

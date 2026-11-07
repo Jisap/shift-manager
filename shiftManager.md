@@ -1,7 +1,8 @@
 # ShiftManager
+
 ## Guía de producto, arquitectura y desarrollo para agentes de IA
 
-**Versión:** 1.6  
+**Versión:** 1.7  
 **Estado:** Especificación ejecutable; decisiones técnicas cerradas  
 **Objetivo:** Construir una aplicación web para gestionar turnos laborales, horarios, jornadas, horas trabajadas y estadísticas personales.
 
@@ -316,29 +317,29 @@ El proyecto utilizará tecnologías modernas, mantenibles y con buena integraci�
 
 ## 5.1. Stack principal
 
-| Área                    | Tecnología                  |
-| ----------------------- | --------------------------- |
-| Framework               | Next.js 16                  |
-| Lenguaje                | TypeScript                  |
-| Backend y base de datos | Convex                      |
-| Autenticación           | Convex Auth                 |
-| Estilos                 | Tailwind CSS v4             |
-| Componentes UI          | shadcn/ui                   |
-| Formularios             | React Hook Form             |
-| Validación              | Zod                         |
-| Fechas                  | date-fns v4                 |
-| Zonas horarias          | @date-fns/tz                |
-| Calendario              | React Day Picker            |
-| Gráficos                | Recharts                    |
-| Exportación PDF         | @react-pdf/renderer         |
+| Área                    | Tecnología                   |
+| ----------------------- | ---------------------------- |
+| Framework               | Next.js 16                   |
+| Lenguaje                | TypeScript                   |
+| Backend y base de datos | Convex                       |
+| Autenticación           | Convex Auth                  |
+| Estilos                 | Tailwind CSS v4              |
+| Componentes UI          | shadcn/ui                    |
+| Formularios             | React Hook Form              |
+| Validación              | Zod                          |
+| Fechas                  | date-fns v4                  |
+| Zonas horarias          | @date-fns/tz                 |
+| Calendario              | React Day Picker             |
+| Gráficos                | Recharts                     |
+| Exportación PDF         | @react-pdf/renderer          |
 | Exportación CSV         | Generación propia en cliente |
-| Lint y formato          | ESLint + Prettier           |
-| Testing unitario        | Vitest                      |
-| Testing E2E             | Playwright                  |
-| CI                      | GitHub Actions              |
-| Despliegue frontend     | Vercel                      |
-| Backend                 | Convex                      |
-| Aplicación instalable   | PWA (Service Worker propio) |
+| Lint y formato          | ESLint + Prettier            |
+| Testing unitario        | Vitest                       |
+| Testing E2E             | Playwright                   |
+| CI                      | GitHub Actions               |
+| Despliegue frontend     | Vercel                       |
+| Backend                 | Convex                       |
+| Aplicación instalable   | PWA (Service Worker propio)  |
 
 ## 5.2. Next.js 16
 
@@ -550,12 +551,14 @@ Los gráficos deben ser sencillos y legibles.
 Se utilizarán:
 
 **Vitest**
+
 - Pruebas unitarias.
 - Pruebas de funciones de cálculo.
 - Pruebas de validaciones.
 - Pruebas del motor de turnos.
 
 **Playwright**
+
 - Pruebas de navegación.
 - Registro e inicio de sesión.
 - Creación de patrones.
@@ -591,12 +594,12 @@ La edición offline y la sincronización posterior quedan fuera del MVP hasta de
 
 Esta convención es obligatoria y afecta a todo el proyecto.
 
-| Concepto                | Representación                          | Ejemplo          |
-| ----------------------- | --------------------------------------- | ---------------- |
-| Fecha de calendario     | `string` `YYYY-MM-DD` en hora local     | `"2026-03-29"`   |
-| Hora dentro de un turno | `string` `HH:mm` en hora local          | `"22:00"`        |
-| Instante real (evento)  | `number` epoch en milisegundos UTC      | `1774764000000`  |
-| Zona horaria            | `string` IANA                           | `"Europe/Madrid"`|
+| Concepto                | Representación                      | Ejemplo           |
+| ----------------------- | ----------------------------------- | ----------------- |
+| Fecha de calendario     | `string` `YYYY-MM-DD` en hora local | `"2026-03-29"`    |
+| Hora dentro de un turno | `string` `HH:mm` en hora local      | `"22:00"`         |
+| Instante real (evento)  | `number` epoch en milisegundos UTC  | `1774764000000`   |
+| Zona horaria            | `string` IANA                       | `"Europe/Madrid"` |
 
 Reglas:
 
@@ -770,22 +773,32 @@ Reglas del contrato:
 - El calendario y las estadísticas consumen `ResolvedDay[]`.
 - Cualquier cambio de firma debe actualizar este documento y sus pruebas.
 
-## 5.22. Resumen de decisiones cerradas
+## 5.22. Recordatorios (decisión)
 
-| #  | Decisión                                                     | Estado |
-| -- | ------------------------------------------------------------ | ------ |
-| 1  | Convex Auth con email + contraseña                           | Cerrada |
-| 2  | Turnos con `intervals[]` (soporta partidos y nocturnos)      | Cerrada |
-| 3  | Calendario calculado al leer; solo excepciones persistidas   | Cerrada |
-| 4  | Una única excepción por usuario y fecha                      | Cerrada |
-| 5  | Fechas locales `YYYY-MM-DD`, instantes UTC, horas `HH:mm`    | Cerrada |
-| 6  | Política DST explícita                                       | Cerrada |
-| 7  | PDF en cliente con `@react-pdf/renderer`                     | Cerrada |
-| 8  | PWA con Service Worker propio y sin caché de datos privados  | Cerrada |
-| 9  | MVP solo en español con textos centralizados                 | Cerrada |
-| 10 | ESLint + Prettier + GitHub Actions                           | Cerrada |
-| 11 | Errores con `ConvexError` y códigos estables                 | Cerrada |
-| 12 | Motor puro con contrato tipado                               | Cerrada |
+- Las preferencias se guardan en `users.reminderSettings`: `enabled`, `leadMinutes` y `notifyChanges`.
+- La programación del aviso se hace en el cliente con `setTimeout` a partir del próximo turno resuelto por el motor; el permiso de notificaciones se solicita desde `/settings` con una acción del usuario.
+- La notificación se muestra con `registration.showNotification` del service worker y, como respaldo, con `new Notification`.
+- **No hay servidor de push en el MVP**: los avisos solo se entregan con la aplicación abierta o instalada en segundo plano. La interfaz lo advierte explícitamente.
+- El aviso de cambio de turno se detecta comparando la firma del próximo turno mientras la sesión está abierta.
+- Si en el futuro se necesitan notificaciones con la app cerrada, se añadirá Web Push con suscripción, claves VAPID y un endpoint en Convex; no se promete hasta entonces.
+
+## 5.23. Resumen de decisiones cerradas
+
+| #   | Decisión                                                    | Estado  |
+| --- | ----------------------------------------------------------- | ------- |
+| 1   | Convex Auth con email + contraseña                          | Cerrada |
+| 2   | Turnos con `intervals[]` (soporta partidos y nocturnos)     | Cerrada |
+| 3   | Calendario calculado al leer; solo excepciones persistidas  | Cerrada |
+| 4   | Una única excepción por usuario y fecha                     | Cerrada |
+| 5   | Fechas locales `YYYY-MM-DD`, instantes UTC, horas `HH:mm`   | Cerrada |
+| 6   | Política DST explícita                                      | Cerrada |
+| 7   | PDF en cliente con `@react-pdf/renderer`                    | Cerrada |
+| 8   | PWA con Service Worker propio y sin caché de datos privados | Cerrada |
+| 9   | MVP solo en español con textos centralizados                | Cerrada |
+| 10  | ESLint + Prettier + GitHub Actions                          | Cerrada |
+| 11  | Errores con `ConvexError` y códigos estables                | Cerrada |
+| 12  | Motor puro con contrato tipado                              | Cerrada |
+| 13  | Recordatorios en cliente, sin servidor de push en el MVP    | Cerrada |
 
 ---
 
@@ -882,13 +895,13 @@ El modelo definitivo se implementa con el esquema de Convex, usando validadores 
 
 ## 7.0. Convenciones de almacenamiento
 
-| Dato                | Tipo     | Formato             | Ejemplo          |
-| ------------------- | -------- | ------------------- | ---------------- |
-| Fecha de calendario | `string` | `YYYY-MM-DD` local  | `"2026-03-29"`   |
-| Hora de turno       | `string` | `HH:mm` local       | `"22:00"`        |
-| Instante real       | `number` | epoch ms UTC        | `1774764000000`  |
-| Zona horaria        | `string` | IANA                | `"Europe/Madrid"`|
-| Color               | `string` | hexadecimal         | `"#2563eb"`      |
+| Dato                | Tipo     | Formato            | Ejemplo           |
+| ------------------- | -------- | ------------------ | ----------------- |
+| Fecha de calendario | `string` | `YYYY-MM-DD` local | `"2026-03-29"`    |
+| Hora de turno       | `string` | `HH:mm` local      | `"22:00"`         |
+| Instante real       | `number` | epoch ms UTC       | `1774764000000`   |
+| Zona horaria        | `string` | IANA               | `"Europe/Madrid"` |
+| Color               | `string` | hexadecimal        | `"#2563eb"`       |
 
 - No se guardan objetos `Date` en la base de datos.
 - Las fechas locales no se convierten a UTC al guardarlas.
@@ -923,19 +936,17 @@ shiftTypes: defineTable({
   intervals: v.array(
     v.object({
       start: v.string(), // HH:mm local
-      end: v.string(),   // HH:mm local; si end <= start cruza medianoche
-    })
+      end: v.string(), // HH:mm local; si end <= start cruza medianoche
+    }),
   ),
-  breaks: v.optional(
-    v.array(v.object({ start: v.string(), end: v.string() }))
-  ), // descansos con hora de inicio y fin
+  breaks: v.optional(v.array(v.object({ start: v.string(), end: v.string() }))), // descansos con hora de inicio y fin
   breakMinutes: v.number(), // suma calculada por el backend
   breakPaid: v.boolean(),
   archivedAt: v.optional(v.number()),
   updatedAt: v.number(),
 })
   .index("by_user", ["userId"])
-  .index("by_user_archived", ["userId", "archivedAt"])
+  .index("by_user_archived", ["userId", "archivedAt"]);
 ```
 
 Reglas:
@@ -956,14 +967,14 @@ shiftPatterns: defineTable({
   name: v.string(),
   type: v.union(v.literal("weekly"), v.literal("rotating")),
   cycleLength: v.number(), // 7 en weekly, n en rotating
-  anchorDate: v.string(),  // YYYY-MM-DD; lunes en weekly, día 0 en rotating
+  anchorDate: v.string(), // YYYY-MM-DD; lunes en weekly, día 0 en rotating
   startDate: v.string(),
   endDate: v.optional(v.string()),
   archivedAt: v.optional(v.number()),
   updatedAt: v.number(),
 })
   .index("by_user", ["userId"])
-  .index("by_user_active", ["userId", "archivedAt"])
+  .index("by_user_active", ["userId", "archivedAt"]);
 ```
 
 Reglas:
@@ -986,7 +997,7 @@ patternDays: defineTable({
   shiftTypeId: v.optional(v.id("shiftTypes")), // obligatorio si isRestDay = false
 })
   .index("by_pattern", ["patternId"])
-  .index("by_pattern_day", ["patternId", "dayIndex"])
+  .index("by_pattern_day", ["patternId", "dayIndex"]);
 ```
 
 Reglas:
@@ -1005,17 +1016,16 @@ scheduleOverrides: defineTable({
   date: v.string(), // YYYY-MM-DD local
   kind: v.union(
     v.literal("shift"), // cambio de turno u horas
-    v.literal("rest"),  // día libre no previsto
-    v.literal("extra")  // jornada añadida
+    v.literal("rest"), // día libre no previsto
+    v.literal("extra"), // jornada añadida
   ),
   shiftTypeId: v.optional(v.id("shiftTypes")),
   intervals: v.optional(
-    v.array(v.object({ start: v.string(), end: v.string() }))
+    v.array(v.object({ start: v.string(), end: v.string() })),
   ),
   notes: v.optional(v.string()),
   updatedAt: v.number(),
-})
-  .index("by_user_date", ["userId", "date"])
+}).index("by_user_date", ["userId", "date"]);
 ```
 
 Reglas:
@@ -1032,23 +1042,22 @@ Representa las horas realmente trabajadas.
 ```ts
 timeEntries: defineTable({
   userId: v.id("users"),
-  date: v.string(),        // YYYY-MM-DD local al que se imputa
+  date: v.string(), // YYYY-MM-DD local al que se imputa
   actualStart: v.optional(v.number()), // epoch ms UTC
-  actualEnd: v.optional(v.number()),   // epoch ms UTC
+  actualEnd: v.optional(v.number()), // epoch ms UTC
   intervals: v.optional(
-    v.array(v.object({ start: v.number(), end: v.number() }))
+    v.array(v.object({ start: v.number(), end: v.number() })),
   ),
   breakMinutes: v.number(),
   expectedMinutes: v.optional(v.number()), // snapshot del previsto al registrar
   overtimeIntervals: v.optional(
-    v.array(v.object({ start: v.string(), end: v.string() })) // HH:mm local
+    v.array(v.object({ start: v.string(), end: v.string() })), // HH:mm local
   ),
   overtimeMinutes: v.optional(v.number()),
   shiftTypeId: v.optional(v.id("shiftTypes")),
   notes: v.optional(v.string()),
   updatedAt: v.number(),
-})
-  .index("by_user_date", ["userId", "date"])
+}).index("by_user_date", ["userId", "date"]);
 ```
 
 Reglas:
@@ -1701,31 +1710,40 @@ Ninguna sesión se considera cerrada hasta actualizar el registro de sesión. El
 # Sesión <fecha> — <agente/modelo>
 
 ## Objetivo
+
 ...
 
 ## Hecho
+
 - [x] ...
 
 ## Archivos creados/modificados
+
 - `ruta` — motivo
 
 ## Decisiones tomadas
+
 - ...
 
 ## Dependencias añadidas
+
 - ...
 
 ## Pruebas ejecutadas
+
 - Comando — resultado
 
 ## Problemas / bloqueos
+
 - ...
 
 ## Pendiente para la siguiente sesión
+
 - [ ] ...
 - [ ] ...
 
 ## Siguiente paso recomendado
+
 ...
 ```
 

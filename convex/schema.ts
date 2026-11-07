@@ -24,6 +24,15 @@ export default defineSchema({
     preferences: v.optional(
       v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
     ),
+    // Recordatorios de turno. Las notificaciones se programan en el cliente;
+    // aquí solo se persisten las preferencias del usuario.
+    reminderSettings: v.optional(
+      v.object({
+        enabled: v.boolean(),
+        leadMinutes: v.number(),
+        notifyChanges: v.boolean(),
+      }),
+    ),
   }).index("email", ["email"]),
 
   shiftTypes: defineTable({

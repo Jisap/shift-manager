@@ -11,6 +11,7 @@ import {
   LogIn,
   Menu,
   Palmtree,
+  Settings,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -25,6 +26,7 @@ const NAV_LINKS = [
   { href: "/shifts", label: "Turnos", icon: Clock },
   { href: "/patterns", label: "Patrones", icon: Layers },
   { href: "/vacations", label: "Vacaciones", icon: Palmtree },
+  { href: "/settings", label: "Ajustes", icon: Settings },
 ];
 
 /**
@@ -42,15 +44,15 @@ export function AppHeader() {
   const isAuthPage = pathname === "/signin";
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className="border-border/60 bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-40 w-full border-b backdrop-blur">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Marca / Logo */}
         <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="flex items-center gap-2 font-semibold tracking-tight text-foreground transition-colors hover:text-primary"
+            className="text-foreground hover:text-primary flex items-center gap-2 font-semibold tracking-tight transition-colors"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+            <div className="bg-primary text-primary-foreground flex h-8 w-8 items-center justify-center rounded-lg shadow-sm">
               <CalendarDays className="h-4 w-4" />
             </div>
             <span className="text-base font-bold">ShiftManager</span>
@@ -58,9 +60,13 @@ export function AppHeader() {
 
           {/* Enlaces de escritorio */}
           {!isAuthPage ? (
-            <nav className="hidden items-center gap-1 md:flex" aria-label="Navegación principal">
+            <nav
+              className="hidden items-center gap-1 md:flex"
+              aria-label="Navegación principal"
+            >
               {NAV_LINKS.map(({ href, label, icon: Icon }) => {
-                const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+                const isActive =
+                  pathname === href || pathname?.startsWith(`${href}/`);
                 return (
                   <Link
                     key={href}
@@ -68,8 +74,8 @@ export function AppHeader() {
                     className={cn(
                       "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-accent text-accent-foreground shadow-xs font-semibold"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "bg-accent text-accent-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -84,19 +90,24 @@ export function AppHeader() {
         {/* Acciones de usuario / Login */}
         <div className="hidden items-center gap-2 md:flex">
           {isLoading ? (
-            <div className="h-8 w-20 animate-pulse rounded bg-muted" />
+            <div className="bg-muted h-8 w-20 animate-pulse rounded" />
           ) : isAuthenticated ? (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => void signOut()}
-              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground gap-1.5"
             >
               <LogOut className="h-4 w-4" />
               <span>Cerrar sesión</span>
             </Button>
           ) : (
-            <Button asChild size="sm" variant="default" className="gap-1.5 shadow-xs">
+            <Button
+              asChild
+              size="sm"
+              variant="default"
+              className="gap-1.5 shadow-xs"
+            >
               <Link href="/signin">
                 <LogIn className="h-4 w-4" />
                 <span>Entrar</span>
@@ -114,7 +125,11 @@ export function AppHeader() {
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-label="Alternar menú"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </Button>
           </div>
         ) : null}
@@ -122,10 +137,11 @@ export function AppHeader() {
 
       {/* Menú desplegable móvil */}
       {mobileMenuOpen && !isAuthPage ? (
-        <div className="border-b border-border bg-background px-4 py-3 md:hidden">
+        <div className="border-border bg-background border-b px-4 py-3 md:hidden">
           <nav className="flex flex-col gap-1" aria-label="Navegación móvil">
             {NAV_LINKS.map(({ href, label, icon: Icon }) => {
-              const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+              const isActive =
+                pathname === href || pathname?.startsWith(`${href}/`);
               return (
                 <Link
                   key={href}
@@ -135,7 +151,7 @@ export function AppHeader() {
                     "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-accent text-accent-foreground font-semibold"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -143,12 +159,12 @@ export function AppHeader() {
                 </Link>
               );
             })}
-            <div className="mt-2 border-t border-border/60 pt-2">
+            <div className="border-border/60 mt-2 border-t pt-2">
               {isAuthenticated ? (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-start gap-2 text-muted-foreground"
+                  className="text-muted-foreground w-full justify-start gap-2"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     void signOut();
@@ -158,7 +174,11 @@ export function AppHeader() {
                   <span>Cerrar sesión</span>
                 </Button>
               ) : (
-                <Button asChild size="sm" className="w-full justify-start gap-2">
+                <Button
+                  asChild
+                  size="sm"
+                  className="w-full justify-start gap-2"
+                >
                   <Link href="/signin" onClick={() => setMobileMenuOpen(false)}>
                     <LogIn className="h-4 w-4" />
                     <span>Entrar</span>
@@ -172,4 +192,3 @@ export function AppHeader() {
     </header>
   );
 }
-

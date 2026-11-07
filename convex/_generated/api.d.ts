@@ -14,6 +14,7 @@ import type * as holidays from "../holidays.js";
 import type * as http from "../http.js";
 import type * as overrides from "../overrides.js";
 import type * as patterns from "../patterns.js";
+import type * as reminders from "../reminders.js";
 import type * as shiftTypes from "../shiftTypes.js";
 import type * as timeEntries from "../timeEntries.js";
 import type * as vacations from "../vacations.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   overrides: typeof overrides;
   patterns: typeof patterns;
+  reminders: typeof reminders;
   shiftTypes: typeof shiftTypes;
   timeEntries: typeof timeEntries;
   vacations: typeof vacations;

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "shiftmanager-v1";
+const CACHE_VERSION = "shiftmanager-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const OFFLINE_CACHE = `${CACHE_VERSION}-offline`;
 const OFFLINE_URL = "/offline";
@@ -88,6 +88,36 @@ async function networkFirstWithOffline(request) {
     });
   }
 }
+
+// Al pulsar una notificación, enfoca una pestaña con la URL indicada o abre
+// una nueva. La URL viaja en `notification.data.url` (ver `showBrowserNotification`).
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const target = new URL(
+    event.notification.data && event.notification.data.url
+      ? event.notification.data.url
+      : "/",
+    self.location.origin,
+  ).href;
+
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of windows) {
+        if (client.url === target && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(target);
+      }
+    })(),
+  );
+});
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
