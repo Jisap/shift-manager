@@ -33,6 +33,7 @@ import {
   Flame,
   Gauge,
   Minus,
+  Palmtree,
   PartyPopper,
   Timer,
   TrendingDown,
@@ -235,11 +236,14 @@ export function DashboardView() {
   );
 
   const range = rangeForFilter(filter, customStart, customEnd, new Date());
+  // Se desestructura para que las dependencias de los `useMemo` sean valores
+  // estables (el objeto `range` se recrea en cada render).
+  const { start: rangeStart, end: rangeEnd } = range;
   const rangeValid = isValidRange(range);
   // Si el rango no es válido se salta la consulta ("skip") para no pedir
   // datos de un periodo incorrecto o demasiado grande.
   const queryArgs = rangeValid
-    ? { startDate: range.start, endDate: range.end }
+    ? { startDate: rangeStart, endDate: rangeEnd }
     : "skip";
   // Rango fijo de los próximos turnos/descansos; no depende del filtro.
   const upcomingArgs = {
@@ -279,6 +283,21 @@ export function DashboardView() {
     api.overrides.listRange,
     isAuthenticated && queryArgs !== "skip" ? queryArgs : "skip",
   );
+  // Días de vacaciones registrados en el periodo, para contarlos y marcarlos
+  // en la exportación.
+  const vacations = useQuery(
+    api.vacations.listRange,
+    isAuthenticated && queryArgs !== "skip" ? queryArgs : "skip",
+  );
+  // Saldo de vacaciones del año del periodo (o del año actual si el rango no
+  // es válido). El backend recalcula los días utilizados en cada consulta.
+  const balanceYear = rangeValid
+    ? Number(rangeEnd.slice(0, 4))
+    : new Date().getFullYear();
+  const vacationBalance = useQuery(
+    api.vacations.getBalance,
+    isAuthenticated && rangeValid ? { year: balanceYear } : "skip",
+  );
 
   // --------------------------------------------------------------------------
   // Datos derivados
@@ -314,8 +333,11 @@ export function DashboardView() {
           .filter((override) => override.kind === "extra")
           .map((override) => override.date),
       ),
+      vacationDates: new Set(
+        (vacations ?? []).map((vacation) => vacation.date),
+      ),
     });
-  }, [calendar, timeEntries, holidays, overrides]);
+  }, [calendar, timeEntries, holidays, overrides, vacations]);
 
   // Indicadores derivados de los totales del periodo (cumplimiento, medias y
   // peso de las horas extra). La función es pura y no vuelve a calcular horas.
@@ -329,22 +351,22 @@ export function DashboardView() {
   // Datos de exportación del periodo seleccionado. Se generan una sola vez por
   // cambio de datos y se reutilizan para CSV y PDF. Es `undefined` mientras el
   // calendario carga o el rango no es válido (la consulta está en "skip").
-  const exportData = useMemo(() => {
-    if (calendar === undefined) {
-      return undefined;
-    }
-    return buildExportData({
-      startDate: range.start,
-      endDate: range.end,
-      timezone: calendar.timezone,
-      days: calendar.days,
-      statistics: summary,
-      shiftNames,
-    });
-  }, [calendar, range.start, range.end, summary, shiftNames]);
+  // Sin `useMemo` manual: el React Compiler lo memoriza a partir de las
+  // dependencias reales (el objeto `range` se recrea en cada render).
+  const exportData =
+    calendar === undefined
+      ? undefined
+      : buildExportData({
+          startDate: rangeStart,
+          endDate: rangeEnd,
+          timezone: calendar.timezone,
+          days: calendar.days,
+          statistics: summary,
+          shiftNames,
+        });
 
   // Granularidad del gráfico (día, semana o mes) según la longitud del rango.
-  const bucketSize = statisticsBucketSize(range.start, range.end);
+  const bucketSize = statisticsBucketSize(rangeStart, rangeEnd);
   // Datos de Recharts: minutos pasados a horas con un decimal.
   const chartData = bucketStatistics(summary.days, bucketSize).map(
     (bucket) => ({
@@ -559,9 +581,9 @@ export function DashboardView() {
             RangeError. Con rango inválido se muestra el aviso de más abajo. */}
         {rangeValid ? (
           <p className="border-border/60 bg-card text-muted-foreground rounded-full border px-3 py-1 text-xs font-medium">
-            {format(parseISO(range.start), "d MMM yyyy", { locale: es })}
+            {format(parseISO(rangeStart), "d MMM yyyy", { locale: es })}
             {" – "}
-            {format(parseISO(range.end), "d MMM yyyy", { locale: es })}
+            {format(parseISO(rangeEnd), "d MMM yyyy", { locale: es })}
           </p>
         ) : null}
 
@@ -647,6 +669,28 @@ export function DashboardView() {
               value={String(summary.holidayDays)}
               icon={PartyPopper}
               iconClassName="bg-rose-500/10 text-rose-600 dark:text-rose-400"
+            />
+            <SummaryCard
+              label="Vacaciones"
+              value={String(summary.vacationDays)}
+              icon={Palmtree}
+              iconClassName="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            />
+            <SummaryCard
+              label={`Vacaciones disponibles ${balanceYear}`}
+              value={
+                vacationBalance === undefined
+                  ? "—"
+                  : `${vacationBalance.remainingDays} d`
+              }
+              icon={Palmtree}
+              iconClassName="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              tone={
+                vacationBalance !== undefined &&
+                vacationBalance.remainingDays < 0
+                  ? "negative"
+                  : "neutral"
+              }
             />
             <SummaryCard
               label="Días registrados"

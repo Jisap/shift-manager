@@ -37,6 +37,7 @@ function statisticsDay(
     differenceMinutes: actualMinutes - plannedMinutes,
     isHoliday: false,
     isExtraDay: false,
+    isVacation: false,
     isShift: plannedMinutes > 0,
     normal: actualMinutes,
     extra: 0,
@@ -100,6 +101,7 @@ describe("buildStatistics", () => {
       ],
       holidayDates: new Set(["2026-11-04"]),
       extraDates: new Set(["2026-11-05"]),
+      vacationDates: new Set(["2026-11-03"]),
     });
 
     expect(summary.plannedMinutes).toBe(960);
@@ -109,7 +111,10 @@ describe("buildStatistics", () => {
     expect(summary.shiftDays).toBe(2);
     expect(summary.restDays).toBe(2);
     expect(summary.holidayDays).toBe(1);
+    expect(summary.vacationDays).toBe(1);
     expect(summary.recordedDays).toBe(2);
+    expect(summary.days[1]?.isVacation).toBe(true);
+    expect(summary.days[0]?.isVacation).toBe(false);
     expect(summary.classified.normal).toBe(390);
     expect(summary.classified.extra).toBe(180);
     expect(summary.classified.holiday).toBe(480);
@@ -124,6 +129,7 @@ describe("buildStatistics", () => {
       timeEntries: [],
       holidayDates: new Set(),
       extraDates: new Set(),
+      vacationDates: new Set(),
     });
     expect(summary).toEqual(emptyStatisticsSummary());
   });

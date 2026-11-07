@@ -36,6 +36,8 @@ export interface StatisticsInput {
   holidayDates: ReadonlySet<string>;
   /** Fechas con una excepción de tipo `extra`. */
   extraDates: ReadonlySet<string>;
+  /** Fechas con un día de vacaciones registrado. */
+  vacationDates: ReadonlySet<string>;
 }
 
 export interface StatisticsDay extends ClassifiedMinutes {
@@ -46,6 +48,7 @@ export interface StatisticsDay extends ClassifiedMinutes {
   differenceMinutes: number;
   isHoliday: boolean;
   isExtraDay: boolean;
+  isVacation: boolean;
   isShift: boolean;
 }
 
@@ -58,6 +61,7 @@ export interface StatisticsSummary {
   shiftDays: number;
   restDays: number;
   holidayDays: number;
+  vacationDays: number;
   recordedDays: number;
   days: StatisticsDay[];
 }
@@ -116,6 +120,7 @@ export function buildStatistics(input: StatisticsInput): StatisticsSummary {
     const overtimeMinutes = entry?.overtimeMinutes ?? 0;
     const isHoliday = input.holidayDates.has(day.date);
     const isExtraDay = input.extraDates.has(day.date);
+    const isVacation = input.vacationDates.has(day.date);
     const classified = classifyDayMinutes({
       actualMinutes,
       overtimeMinutes,
@@ -131,6 +136,7 @@ export function buildStatistics(input: StatisticsInput): StatisticsSummary {
       differenceMinutes: actualMinutes - day.plannedMinutes,
       isHoliday,
       isExtraDay,
+      isVacation,
       isShift: day.kind === "shift",
       ...classified,
     };
@@ -158,6 +164,7 @@ export function buildStatistics(input: StatisticsInput): StatisticsSummary {
     shiftDays: days.filter((day) => day.isShift).length,
     restDays: days.filter((day) => !day.isShift).length,
     holidayDays: days.filter((day) => day.isHoliday).length,
+    vacationDays: days.filter((day) => day.isVacation).length,
     recordedDays: days.filter((day) => day.actualMinutes > 0).length,
     days,
   };
@@ -273,6 +280,7 @@ export function emptyStatisticsSummary(): StatisticsSummary {
     shiftDays: 0,
     restDays: 0,
     holidayDays: 0,
+    vacationDays: 0,
     recordedDays: 0,
     days: [],
   };

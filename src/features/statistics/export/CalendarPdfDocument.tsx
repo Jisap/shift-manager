@@ -192,7 +192,10 @@ export function CalendarPdfDocument({ data }: { data: ExportData }) {
             <View style={styles.summaryCell}>
               <Text style={styles.summaryLabel}>Diferencia</Text>
               <Text
-                style={[styles.summaryValue, differenceStyle(summary.differenceMinutes)]}
+                style={[
+                  styles.summaryValue,
+                  differenceStyle(summary.differenceMinutes),
+                ]}
               >
                 {signedHours(summary.differenceMinutes)}
               </Text>
@@ -225,8 +228,9 @@ export function CalendarPdfDocument({ data }: { data: ExportData }) {
               </Text>
             </View>
           </View>
-          {/* Fila 3: resto de categorías. Las dos celdas vacías mantienen el
-              ancho de las columnas alineado con las filas de arriba. */}
+          {/* Fila 3: resto de categorías y días de vacaciones. La celda vacía
+              final mantiene el ancho de las columnas alineado con las filas
+              de arriba. */}
           <View style={styles.summaryRow}>
             <View style={styles.summaryCell}>
               <Text style={styles.summaryLabel}>Extra</Text>
@@ -240,7 +244,10 @@ export function CalendarPdfDocument({ data }: { data: ExportData }) {
                 {hours(summary.holidayExtraMinutes)}
               </Text>
             </View>
-            <View style={styles.summaryCell} />
+            <View style={styles.summaryCell}>
+              <Text style={styles.summaryLabel}>Vacaciones</Text>
+              <Text style={styles.summaryValue}>{summary.vacationDays}</Text>
+            </View>
             <View style={styles.summaryCell} />
           </View>
         </View>

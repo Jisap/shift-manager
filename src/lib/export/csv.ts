@@ -24,6 +24,7 @@ const HEADERS = [
   "Categoría",
   "Festivo",
   "Jornada extra",
+  "Vacaciones",
 ] as const;
 
 /**
@@ -64,6 +65,7 @@ export function buildCsv(data: ExportData): string {
       row.category,
       row.isHoliday ? "Sí" : "No",
       row.isExtraDay ? "Sí" : "No",
+      row.isVacation ? "Sí" : "No",
     ]);
   }
 
@@ -76,6 +78,7 @@ export function buildCsv(data: ExportData): string {
     decimalHours(data.summary.actualMinutes),
     decimalHours(data.summary.differenceMinutes),
     decimalHours(data.summary.overtimeMinutes),
+    "",
     "",
     "",
     "",

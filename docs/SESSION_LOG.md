@@ -43,3 +43,4 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-05 22:22 | opencode (deepseek-v4.1-flash-free) | Fase 8: manifest, iconos, Service Worker y página offline | [sessions/2026-11-05-2222-opencode.md](sessions/2026-11-05-2222-opencode.md) |
 | 2026-11-05 22:42 | opencode (deepseek-v4.1-flash-free) | CI preparado; workflow pendiente de subir por permisos del token | [sessions/2026-11-05-2242-opencode.md](sessions/2026-11-05-2242-opencode.md) |
 | 2026-11-05 23:30 | opencode (deepseek-v4.1-flash-free) | Suite E2E: autenticación y descarga CSV/PDF (4 tests en verde) | [sessions/2026-11-05-2330-opencode.md](sessions/2026-11-05-2330-opencode.md) |
+| 2026-11-07 09:07 | opencode (deepseek-v4.1-flash-free) | Vacaciones en Dashboard/exportación y edición de nota en `/vacations` | [sessions/2026-11-07-0907-opencode.md](sessions/2026-11-07-0907-opencode.md) |

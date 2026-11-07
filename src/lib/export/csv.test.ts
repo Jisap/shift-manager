@@ -38,6 +38,7 @@ function exportFixture() {
     ],
     holidayDates: new Set(),
     extraDates: new Set(),
+    vacationDates: new Set(["2026-11-03"]),
   });
   return buildExportData({
     startDate: "2026-11-02",
@@ -65,7 +66,8 @@ describe("buildExportData", () => {
     const rest = data.rows[1]!;
     expect(rest.shift).toBe("Descanso");
     expect(rest.intervals).toBe("");
-    expect(rest.category).toBe("—");
+    expect(rest.category).toBe("Vacaciones");
+    expect(rest.isVacation).toBe(true);
     expect(rest.differenceMinutes).toBe(0);
   });
 
@@ -77,6 +79,7 @@ describe("buildExportData", () => {
     expect(data.summary.differenceMinutes).toBe(-30);
     expect(data.summary.normalMinutes).toBe(420);
     expect(data.summary.extraMinutes).toBe(30);
+    expect(data.summary.vacationDays).toBe(1);
   });
 });
 
@@ -91,6 +94,7 @@ describe("categoryLabel", () => {
         differenceMinutes: 0,
         isHoliday: true,
         isExtraDay: false,
+        isVacation: false,
         isShift: true,
         normal: 30,
         extra: 0,
@@ -136,10 +140,11 @@ describe("buildCsv", () => {
 
     const lines = csv.slice(1).split("\r\n");
     expect(lines[0]).toBe(
-      "Fecha,Día,Turno,Horario,Horas previstas,Horas reales,Diferencia,Horas extra,Categoría,Festivo,Jornada extra",
+      "Fecha,Día,Turno,Horario,Horas previstas,Horas reales,Diferencia,Horas extra,Categoría,Festivo,Jornada extra,Vacaciones",
     );
     expect(lines[1]).toContain("2026-11-02");
     expect(lines[1]).toContain("Mañana");
+    expect(lines[2]).toContain("Vacaciones");
     expect(lines[3]).toContain("Total");
     expect(lines[3]).toContain("8.00");
   });

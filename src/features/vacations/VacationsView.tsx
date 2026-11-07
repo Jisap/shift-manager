@@ -16,10 +16,13 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   CalendarPlus,
+  Check,
   ChevronLeft,
   ChevronRight,
   Palmtree,
+  Pencil,
   Trash2,
+  X,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
@@ -51,6 +54,10 @@ export function VacationsView() {
   const [error, setError] = useState<string | null>(null);
   const [savingDay, setSavingDay] = useState(false);
   const [savingAllocation, setSavingAllocation] = useState(false);
+  // Día cuya nota se está editando en línea (null si ninguno).
+  const [editingId, setEditingId] = useState<Id<"vacations"> | null>(null);
+  const [editingNote, setEditingNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   const balance = useQuery(
     api.vacations.getBalance,
@@ -62,6 +69,7 @@ export function VacationsView() {
   );
   const createDay = useMutation(api.vacations.create);
   const removeDay = useMutation(api.vacations.remove);
+  const updateNote = useMutation(api.vacations.updateNote);
   const setAllocatedDays = useMutation(api.vacations.setAllocatedDays);
 
   /** Cambia de año y recoloca la fecha del formulario en el nuevo año. */
@@ -101,10 +109,47 @@ export function VacationsView() {
     setError(null);
     try {
       await removeDay({ id });
+      // Si se estaba editando ese día, se cierra el formulario en línea.
+      if (editingId === id) {
+        cancelEditing();
+      }
     } catch (caught) {
       setError(
         convexErrorMessage(caught, "No se pudo eliminar el día de vacaciones."),
       );
+    }
+  }
+
+  /** Abre la edición en línea de la nota de un día. */
+  function startEditing(id: Id<"vacations">, note: string | undefined) {
+    setEditingId(id);
+    setEditingNote(note ?? "");
+    setError(null);
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setEditingNote("");
+  }
+
+  async function handleUpdateNote(
+    event: FormEvent<HTMLFormElement>,
+    id: Id<"vacations">,
+  ) {
+    event.preventDefault();
+    setError(null);
+    setSavingNote(true);
+    try {
+      const trimmedNote = editingNote.trim();
+      await updateNote({
+        id,
+        note: trimmedNote.length === 0 ? undefined : trimmedNote,
+      });
+      cancelEditing();
+    } catch (caught) {
+      setError(convexErrorMessage(caught, "No se pudo guardar la nota."));
+    } finally {
+      setSavingNote(false);
     }
   }
 
@@ -330,30 +375,86 @@ export function VacationsView() {
               {days.map((day) => (
                 <li
                   key={day._id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                  className="flex flex-col gap-2 py-2.5 first:pt-0 last:pb-0"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium capitalize">
-                      {format(parseISO(day.date), "EEEE d 'de' MMMM", {
-                        locale: es,
-                      })}
-                    </p>
-                    {day.note ? (
-                      <p className="text-muted-foreground truncate text-xs">
-                        {day.note}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium capitalize">
+                        {format(parseISO(day.date), "EEEE d 'de' MMMM", {
+                          locale: es,
+                        })}
                       </p>
+                      {editingId !== day._id && day.note ? (
+                        <p className="text-muted-foreground truncate text-xs">
+                          {day.note}
+                        </p>
+                      ) : null}
+                    </div>
+                    {editingId !== day._id ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-foreground gap-1.5"
+                          onClick={() => startEditing(day._id, day.note)}
+                        >
+                          <Pencil className="size-4" aria-hidden />
+                          Editar nota
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive gap-1.5"
+                          onClick={() => void handleRemove(day._id)}
+                        >
+                          <Trash2 className="size-4" aria-hidden />
+                          Quitar
+                        </Button>
+                      </div>
                     ) : null}
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-destructive gap-1.5"
-                    onClick={() => void handleRemove(day._id)}
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                    Quitar
-                  </Button>
+
+                  {/* Edición en línea de la nota del día */}
+                  {editingId === day._id ? (
+                    <form
+                      className="flex flex-wrap items-center gap-2"
+                      onSubmit={(event) =>
+                        void handleUpdateNote(event, day._id)
+                      }
+                    >
+                      <Input
+                        value={editingNote}
+                        maxLength={500}
+                        placeholder="Nota del día (opcional)"
+                        aria-label="Nota del día de vacaciones"
+                        autoFocus
+                        onChange={(event) => setEditingNote(event.target.value)}
+                        className="h-9 min-w-48 flex-1"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={savingNote}
+                      >
+                        <Check className="size-4" aria-hidden />
+                        Guardar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5"
+                        onClick={cancelEditing}
+                        disabled={savingNote}
+                      >
+                        <X className="size-4" aria-hidden />
+                        Cancelar
+                      </Button>
+                    </form>
+                  ) : null}
                 </li>
               ))}
             </ul>

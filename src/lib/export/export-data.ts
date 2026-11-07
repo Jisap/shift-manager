@@ -9,7 +9,10 @@
 
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import type { StatisticsDay, StatisticsSummary } from "../calculations/statistics";
+import type {
+  StatisticsDay,
+  StatisticsSummary,
+} from "../calculations/statistics";
 import type { ResolvedDay } from "../engine";
 
 /** Categoría de un día, tal y como aparece en la exportación. */
@@ -25,6 +28,7 @@ export interface ExportDayRow {
   category: string;
   isHoliday: boolean;
   isExtraDay: boolean;
+  isVacation: boolean;
 }
 
 export interface ExportSummary {
@@ -38,6 +42,7 @@ export interface ExportSummary {
   holidayExtraMinutes: number;
   shiftDays: number;
   restDays: number;
+  vacationDays: number;
   recordedDays: number;
 }
 
@@ -81,6 +86,9 @@ export function categoryLabel(day: StatisticsDay): string {
   }
   if (day.holidayExtra > 0) {
     parts.push("Festivo-extra");
+  }
+  if (day.isVacation) {
+    parts.push("Vacaciones");
   }
   return parts.length === 0 ? "—" : parts.join(" + ");
 }
@@ -132,6 +140,7 @@ export function buildExportData(input: BuildExportDataInput): ExportData {
       category: statistics === undefined ? "—" : categoryLabel(statistics),
       isHoliday: statistics?.isHoliday ?? false,
       isExtraDay: statistics?.isExtraDay ?? false,
+      isVacation: statistics?.isVacation ?? false,
     };
   });
 
@@ -153,6 +162,7 @@ export function buildExportData(input: BuildExportDataInput): ExportData {
       holidayExtraMinutes: classified.holidayExtra,
       shiftDays: input.statistics.shiftDays,
       restDays: input.statistics.restDays,
+      vacationDays: input.statistics.vacationDays,
       recordedDays: input.statistics.recordedDays,
     },
     rows,
