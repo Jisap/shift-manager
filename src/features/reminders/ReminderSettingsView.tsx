@@ -171,8 +171,11 @@ function PermissionCard({
         {/* Estado actual del permiso, con color según el caso */}
         <p className={`text-sm font-medium ${status.tone}`}>{status.text}</p>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Pedir permiso: se desactiva si el navegador no lo admite o si ya
-              está concedido. Si está bloqueado, el texto del botón cambia. */}
+          {/* Pedir permiso: se desactiva si el navegador no lo admite, si ya
+              está concedido o si está bloqueado. En este último caso el
+              navegador ignoraría una nueva petición, así que el botón solo
+              informa ("Permiso bloqueado") y el texto de arriba explica que
+              hay que activarlo en los ajustes del navegador. */}
           <Button
             type="button"
             size="sm"
@@ -229,12 +232,19 @@ function ReminderForm({
   // el formulario se refresca con los valores nuevos para no pisarlos al
   // guardar. Si el cambio coincide con lo que ya hay en pantalla (por ejemplo,
   // justo después de guardar aquí), no se toca nada y se conserva el aviso.
+  // Se compara una "firma" de los ajustes y el estado se ajusta durante el
+  // renderizado (patrón de React para reaccionar a un cambio de props) en lugar
+  // de usar un efecto, que provocaría un render intermedio con datos viejos.
+  // Contrapartida: si había ediciones sin guardar que no coinciden con lo
+  // recibido, se descartan en favor de los ajustes nuevos.
   const [baseSignature, setBaseSignature] = useState(() =>
     reminderSettingsSignature(settings),
   );
   const incomingSignature = reminderSettingsSignature(settings);
   if (baseSignature !== incomingSignature) {
     setBaseSignature(incomingSignature);
+    // Borrador actual en pantalla; una antelación vacía se trata como NaN
+    // (no válida) para que no se confunda con el valor 0.
     const draftLead =
       leadMinutes.trim() === "" ? Number.NaN : Number(leadMinutes);
     const draftSignature = reminderSettingsSignature({
