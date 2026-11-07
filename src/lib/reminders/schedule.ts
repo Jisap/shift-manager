@@ -14,6 +14,7 @@ import { formatHours } from "../calculations/overtime";
 
 const MILLISECONDS_PER_MINUTE = 60 * 1000;
 
+/** Resultado del cálculo: todo lo necesario para programar y mostrar el aviso. */
 export interface ShiftReminderPlan {
   /** Instante absoluto en el que debe mostrarse la notificación. */
   reminderAt: number;
@@ -68,24 +69,35 @@ export function buildShiftReminder(
 ): ShiftReminderPlan | undefined {
   const leadMilliseconds = input.leadMinutes * MILLISECONDS_PER_MINUTE;
 
+  // Se asume que `days` viene ordenado por fecha: el primer turno que cumpla
+  // las condiciones es el que se devuelve.
   for (const day of input.days) {
+    // Los descansos no generan aviso.
     if (day.kind !== "shift") {
       continue;
     }
+    // El aviso se calcula respecto al INICIO del primer tramo del día; un
+    // turno partido tiene un único aviso, el del primer tramo. Sin tramos no
+    // hay hora de inicio, así que se ignora.
     const firstInterval = day.intervals[0];
     if (firstInterval === undefined) {
       continue;
     }
+    // Hora local de inicio convertida a instante absoluto con la zona horaria
+    // del calendario (así se respeta el horario de verano).
     const startInstant = localDateTimeToInstant(
       day.date,
       firstInterval.start,
       input.timezone,
     );
+    // Momento del aviso: el inicio menos la antelación. Si ya pasó, este turno
+    // se salta y se busca el siguiente (no se avisa con retraso).
     const reminderAt = startInstant - leadMilliseconds;
     if (reminderAt <= input.now) {
       continue;
     }
 
+    // Nombre del turno para el mensaje; se omite si no se conoce o está vacío.
     const shiftName =
       day.shiftTypeId === undefined
         ? undefined
@@ -98,15 +110,23 @@ export function buildShiftReminder(
     return {
       reminderAt,
       shiftDate: day.date,
+      // La firma identifica el turno por fecha, tipo y horario: si alguno
+      // cambia, se considera que el turno ha cambiado.
       signature: `${day.date}|${day.shiftTypeId ?? ""}|${schedule}`,
       title: "Recordatorio de turno",
-      body: `${name}${whenLabel(day.date, input.today)}, ${schedule}${
-        duration.length > 0 ? ` (${duration})` : ""
-      }`,
+      // Ejemplo: "Noche · mañana, 22:00–06:00 (8 h)" (nombre del turno, día,
+      // horario y duración). El nombre y el paréntesis con la duración solo
+      // se añaden si hay texto.
+      body: `${name}${whenLabel(day.date, input.today)}, ${schedule}${duration.length > 0 ? ` (${duration})` : ""
+        }`,
+      // Etiqueta por fecha: una notificación nueva del mismo día sustituye a
+      // la anterior en lugar de apilarse.
       tag: `shift-reminder-${day.date}`,
+      // Al pulsar la notificación se abre el calendario.
       url: "/calendar",
     };
   }
 
+  // Ningún turno con aviso pendiente en el rango recibido.
   return undefined;
 }
