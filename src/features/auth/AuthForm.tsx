@@ -181,18 +181,7 @@ export function AuthForm() {
 
           {flow === "signIn" || flow === "signUp" ? (
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Contraseña</Label>
-                {flow === "signIn" ? (
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
-                    onClick={() => changeFlow("forgot")}
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                ) : null}
-              </div>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 name="password"
@@ -270,6 +259,17 @@ export function AuthForm() {
                     ? "Enviar código"
                     : "Cambiar contraseña"}
           </Button>
+
+          {flow === "signIn" ? (
+            <Button
+              type="button"
+              variant="link"
+              className="w-full"
+              onClick={() => changeFlow("forgot")}
+            >
+              ¿Olvidaste tu contraseña?
+            </Button>
+          ) : null}
 
           {flow === "signIn" || flow === "signUp" ? (
             <Button
