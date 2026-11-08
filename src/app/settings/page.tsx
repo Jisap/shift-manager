@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ProfileSettingsView } from "@/features/profile/ProfileSettingsView";
 import { ReminderSettingsView } from "@/features/reminders/ReminderSettingsView";
 
 export default function SettingsPage() {
@@ -9,13 +10,14 @@ export default function SettingsPage() {
           Ajustes
         </h1>
         <p className="text-muted-foreground text-sm">
-          Configura los recordatorios del próximo turno y el permiso de
-          notificaciones de este dispositivo.
+          Configura tu perfil, la zona horaria y los recordatorios del próximo
+          turno.
         </p>
       </header>
       <Suspense
         fallback={<p className="text-muted-foreground text-sm">Cargando…</p>}
       >
+        <ProfileSettingsView />
         <ReminderSettingsView />
       </Suspense>
     </main>

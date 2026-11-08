@@ -17,6 +17,7 @@ import type * as patterns from "../patterns.js";
 import type * as reminders from "../reminders.js";
 import type * as shiftTypes from "../shiftTypes.js";
 import type * as timeEntries from "../timeEntries.js";
+import type * as users from "../users.js";
 import type * as vacations from "../vacations.js";
 
 import type {
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   reminders: typeof reminders;
   shiftTypes: typeof shiftTypes;
   timeEntries: typeof timeEntries;
+  users: typeof users;
   vacations: typeof vacations;
 }>;
 
