@@ -61,7 +61,20 @@ export const ResendOTPPasswordReset = Resend({
     });
 
     if (error) {
-      throw new Error("No se pudo enviar el código de recuperación");
+      console.error(
+        `[recuperación] Resend rechazó el envío (de: ${from}, para: ${email}): ${error.name} - ${error.message}`,
+        error,
+      );
+      if (from.includes("resend.dev")) {
+        console.error(
+          "[recuperación] Remitente de pruebas detectado (onboarding@resend.dev): " +
+            "Resend solo permite enviar al correo propietario de la cuenta. " +
+            "Verifica un dominio y actualiza AUTH_EMAIL_FROM para enviar a otros destinatarios.",
+        );
+      }
+      throw new Error(
+        `No se pudo enviar el código de recuperación (${error.name}: ${error.message})`,
+      );
     }
   },
 });
