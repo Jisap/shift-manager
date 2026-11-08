@@ -49,3 +49,4 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-07 09:33 | opencode (deepseek-v4.1-flash-free) | Corrige sincronización del formulario de recordatorios y permiso bloqueado | [sessions/2026-11-07-0933-opencode.md](sessions/2026-11-07-0933-opencode.md) |
 | 2026-11-08 16:52 | opencode (deepseek-v4.1-flash-free) | Recordatorios: orden independiente de `days` y sin falsos "Cambio de turno" | [sessions/2026-11-08-1652-opencode.md](sessions/2026-11-08-1652-opencode.md) |
 | 2026-11-08 17:02 | opencode (deepseek-v4.1-flash-free) | Perfil y configuración regional: nombre y zona horaria editables en `/settings` | [sessions/2026-11-08-1702-opencode.md](sessions/2026-11-08-1702-opencode.md) |
+| 2026-11-08 17:25 | opencode (deepseek-v4.1-flash-free) | Recuperación de contraseña por OTP con Resend y flujo en `/signin` | [sessions/2026-11-08-1725-opencode.md](sessions/2026-11-08-1725-opencode.md) |

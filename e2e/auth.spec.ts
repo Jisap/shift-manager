@@ -37,8 +37,31 @@ test("registro, sesión persistente y cierre de sesión", async ({ page }) => {
   // 4. Cierre de sesión: desde la pantalla de acceso se cierra la sesión y
   //    el formulario vuelve a su estado de inicio de sesión.
   await page.goto("/signin");
-  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: "Cerrar sesión" })
+    .click();
   await expect(
     page.getByText("Accede con tu email y contraseña."),
   ).toBeVisible();
+});
+
+test("solicita un código de recuperación y muestra el segundo paso", async ({
+  page,
+}) => {
+  // Cuenta inexistente: el primer paso no debe revelar si el email existe y
+  // la interfaz avanza igualmente al formulario del código.
+  await page.goto("/signin");
+  await page.getByRole("button", { name: "¿Olvidaste tu contraseña?" }).click();
+  await expect(
+    page.getByText("Recuperar contraseña", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByLabel("Email").fill(`recuperacion-${Date.now()}@example.com`);
+  await page.getByRole("button", { name: "Enviar código" }).click();
+
+  await expect(page.getByLabel("Código de verificación")).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(page.getByLabel("Repite la contraseña")).toBeVisible();
 });

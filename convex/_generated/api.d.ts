@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as overrides from "../overrides.js";
 import type * as patterns from "../patterns.js";
 import type * as reminders from "../reminders.js";
+import type * as resendOtpPasswordReset from "../resendOtpPasswordReset.js";
 import type * as shiftTypes from "../shiftTypes.js";
 import type * as timeEntries from "../timeEntries.js";
 import type * as users from "../users.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   overrides: typeof overrides;
   patterns: typeof patterns;
   reminders: typeof reminders;
+  resendOtpPasswordReset: typeof resendOtpPasswordReset;
   shiftTypes: typeof shiftTypes;
   timeEntries: typeof timeEntries;
   users: typeof users;
