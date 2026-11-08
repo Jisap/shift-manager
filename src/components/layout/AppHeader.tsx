@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -90,6 +91,9 @@ export function AppHeader() {
 
         {/* Acciones de usuario / Login */}
         <div className="flex items-center gap-2">
+          {/* Selector de modo oscuro/claro */}
+          <ThemeToggle />
+
           {isLoading ? (
             <div className="bg-muted h-8 w-20 animate-pulse rounded" />
           ) : isAuthenticated ? (

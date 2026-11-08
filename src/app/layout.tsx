@@ -55,10 +55,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    // `lang="es"` para lectores de pantalla y corrección ortográfica. Las
-    // variables de fuente se aplican aquí para estar disponibles en toda la app.
+    // `lang="es"` para lectores de pantalla y corrección ortográfica.
+    // `suppressHydrationWarning` es recomendado por next-themes para evitar avisos por la clase .dark
     <html
       lang="es"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       {/* El body ocupa al menos toda la altura y es una columna flexible, de

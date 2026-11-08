@@ -25,6 +25,7 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-07 20:55 | Antigravity (Gemini 3.8 Flash) | Rediseño ergonómico y visual de ReminderSettingsView (Switches, chips) | [sessions/2026-11-07-2055-antigravity.md](sessions/2026-11-07-2055-antigravity.md) |
 | 2026-11-08 17:46 | Antigravity (Gemini 3.8 Flash) | Refinamiento visual y ergonómico de ProfileSettingsView y AuthForm    | [sessions/2026-11-08-1746-antigravity.md](sessions/2026-11-08-1746-antigravity.md) |
 | 2026-11-08 17:53 | Antigravity (Gemini 3.8 Flash) | Condicionar enlaces del navbar en AppHeader solo a usuarios logueados | [sessions/2026-11-08-1753-antigravity.md](sessions/2026-11-08-1753-antigravity.md) |
+| 2026-11-08 17:59 | Antigravity (Gemini 3.8 Flash) | Implementación de Modo Oscuro con next-themes y botón ThemeToggle     | [sessions/2026-11-08-1759-antigravity.md](sessions/2026-11-08-1759-antigravity.md) |
 | 2026-11-06 13:40 | opencode (deepseek-v4.1-flash-free) | Pulido visual del Dashboard: tarjetas de métricas, próximos turnos y gráfico | [sessions/2026-11-06-1340-opencode.md](sessions/2026-11-06-1340-opencode.md) |
 | 2026-11-06 13:46 | opencode (deepseek-v4.1-flash-free) | Validación PWA sobre build de producción: manifest, SW, offline e iconos | [sessions/2026-11-06-1346-opencode.md](sessions/2026-11-06-1346-opencode.md) |
 | 2026-11-06 13:49 | opencode (deepseek-v4.1-flash-free) | Fase 9: indicadores de rendimiento del periodo en el Dashboard (97 tests) | [sessions/2026-11-06-1349-opencode.md](sessions/2026-11-06-1349-opencode.md) |
