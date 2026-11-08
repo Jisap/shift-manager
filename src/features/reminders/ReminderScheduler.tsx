@@ -20,7 +20,11 @@ import {
   notificationPermission,
   showBrowserNotification,
 } from "@/lib/notifications/browser";
-import { buildShiftReminder } from "@/lib/reminders/schedule";
+import {
+  buildShiftReminder,
+  classifyShiftChange,
+  type TrackedShift,
+} from "@/lib/reminders/schedule";
 
 // Ventana de días que se consulta para localizar el próximo turno. Se mantiene
 // corta para no pedir un calendario largo en todas las páginas.
@@ -34,7 +38,7 @@ const MAX_TIMEOUT_MS = 2_147_483_647;
 // `subscribeToToday` no se suscribe a nada (la fecha no emite eventos) y
 // devuelve una función de limpieza vacía.
 function subscribeToToday(): () => void {
-  return () => { };
+  return () => {};
 }
 
 // Valor en el cliente: hoy en formato "yyyy-MM-dd".
@@ -69,17 +73,18 @@ export function ReminderScheduler() {
     api.calendar.getRange,
     isAuthenticated && today !== null
       ? {
-        startDate: today,
-        endDate: addLocalDays(today, UPCOMING_DAYS),
-      }
+          startDate: today,
+          endDate: addLocalDays(today, UPCOMING_DAYS),
+        }
       : "skip",
   );
   // Tipos de turno, para poner su nombre en el texto de la notificación.
   const shifts = useQuery(api.shiftTypes.list, isAuthenticated ? {} : "skip");
 
-  // Firma del último turno visto en esta sesión, para detectar cambios.
-  // Es un `ref` (no estado) porque modificarla no debe provocar un nuevo render.
-  const lastSignature = useRef<string | null>(null);
+  // Último turno visto en esta sesión, para detectar cambios reales sin
+  // confundir el avance natural de la agenda con un cambio de turno.
+  // Es un `ref` (no estado) porque modificarlo no debe provocar un nuevo render.
+  const lastShift = useRef<TrackedShift | null>(null);
 
   useEffect(() => {
     // Hasta tener sesión, fecha, ajustes y calendario no hay nada que programar.
@@ -95,7 +100,7 @@ export function ReminderScheduler() {
     // Recordatorios desactivados: se olvida el turno conocido para que, al
     // reactivarlos, no se interprete como un cambio.
     if (!settings.enabled) {
-      lastSignature.current = null;
+      lastShift.current = null;
       return;
     }
 
@@ -111,28 +116,32 @@ export function ReminderScheduler() {
     // `buildShiftReminder` (lógica pura) calcula el próximo turno, la hora del
     // recordatorio (turno menos `leadMinutes`) y el texto a mostrar. Devuelve
     // `undefined` si no hay ningún turno que avisar.
+    const now = Date.now();
     const plan = buildShiftReminder({
       days: upcoming.days,
       timezone: upcoming.timezone,
       leadMinutes: settings.leadMinutes,
-      now: Date.now(),
+      now,
       today,
       shiftNames,
     });
 
     if (plan === undefined) {
-      lastSignature.current = null;
+      lastShift.current = null;
       return;
     }
 
-    // Aviso de cambio: solo si ya había un turno conocido en esta sesión.
-    // La primera vez que se ve un turno solo se guarda su firma; si luego la
-    // firma cambia (otro día, horario o turno), se notifica el cambio.
-    const previous = lastSignature.current;
-    lastSignature.current = plan.signature;
+    // Aviso de cambio: solo si ya había un turno conocido en esta sesión y el
+    // cambio no es el simple avance natural de la agenda (por ejemplo, cuando
+    // el aviso del turno anterior ya pasó y el plan pasa al siguiente turno).
+    const previous = lastShift.current;
+    lastShift.current = {
+      signature: plan.signature,
+      shiftDate: plan.shiftDate,
+      reminderAt: plan.reminderAt,
+    };
     if (
-      previous !== null &&
-      previous !== plan.signature &&
+      classifyShiftChange(previous, plan, now) === "changed" &&
       settings.notifyChanges
     ) {
       void showBrowserNotification({

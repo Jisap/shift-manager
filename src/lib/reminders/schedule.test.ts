@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { localDateTimeToInstant } from "../engine";
 import type { ResolvedDay } from "../engine";
-import { buildShiftReminder } from "./schedule";
+import {
+  buildShiftReminder,
+  classifyShiftChange,
+  type ShiftReminderPlan,
+} from "./schedule";
 
 const TIMEZONE = "Europe/Madrid";
 
@@ -108,5 +112,104 @@ describe("buildShiftReminder", () => {
     expect(plan?.reminderAt).toBe(
       localDateTimeToInstant("2026-03-29", "07:00", TIMEZONE),
     );
+  });
+
+  it("elige el turno más próximo aunque los días lleguen desordenados", () => {
+    const now = localDateTimeToInstant("2026-11-07", "09:00", TIMEZONE);
+    const plan = buildShiftReminder({
+      days: [
+        day("2026-11-10", "shift", morning, 480),
+        day("2026-11-08", "shift", morning, 480),
+        day("2026-11-09", "shift", morning, 480),
+      ],
+      timezone: TIMEZONE,
+      leadMinutes: 60,
+      now,
+      today: "2026-11-07",
+    });
+
+    expect(plan?.shiftDate).toBe("2026-11-08");
+  });
+});
+
+function plan(
+  shiftDate: string,
+  signature: string,
+  reminderAt: number,
+): ShiftReminderPlan {
+  return {
+    reminderAt,
+    shiftDate,
+    signature,
+    title: "Recordatorio de turno",
+    body: "",
+    tag: `shift-reminder-${shiftDate}`,
+    url: "/calendar",
+  };
+}
+
+describe("classifyShiftChange", () => {
+  const now = Date.UTC(2026, 10, 7, 9, 0, 0);
+  const previous = {
+    signature: "2026-11-08|shift-1|08:00–16:00",
+    shiftDate: "2026-11-08",
+    reminderAt: now - 60_000,
+  };
+
+  it("marca el primer turno como inicial", () => {
+    expect(
+      classifyShiftChange(null, plan("2026-11-08", "x", now + 60_000), now),
+    ).toBe("initial");
+  });
+
+  it("no marca nada si la firma del turno no cambia", () => {
+    expect(
+      classifyShiftChange(
+        previous,
+        plan("2026-11-08", previous.signature, now + 60_000),
+        now,
+      ),
+    ).toBe("unchanged");
+  });
+
+  it("silencia el avance natural cuando el aviso anterior ya pasó", () => {
+    expect(
+      classifyShiftChange(
+        previous,
+        plan("2026-11-09", "2026-11-09|shift-1|08:00–16:00", now + 60_000),
+        now,
+      ),
+    ).toBe("natural-advance");
+  });
+
+  it("avisa si el turno anterior desaparece antes de su aviso", () => {
+    const stillPending = { ...previous, reminderAt: now + 60_000 };
+    expect(
+      classifyShiftChange(
+        stillPending,
+        plan("2026-11-09", "2026-11-09|shift-1|08:00–16:00", now + 120_000),
+        now,
+      ),
+    ).toBe("changed");
+  });
+
+  it("avisa si cambia el horario del mismo día", () => {
+    expect(
+      classifyShiftChange(
+        previous,
+        plan("2026-11-08", "2026-11-08|shift-1|14:00–22:00", now + 60_000),
+        now,
+      ),
+    ).toBe("changed");
+  });
+
+  it("avisa si aparece un turno anterior al conocido", () => {
+    expect(
+      classifyShiftChange(
+        previous,
+        plan("2026-11-07", "2026-11-07|shift-1|08:00–16:00", now + 60_000),
+        now,
+      ),
+    ).toBe("changed");
   });
 });

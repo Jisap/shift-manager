@@ -40,6 +40,52 @@ export interface BuildReminderInput {
   shiftNames?: ReadonlyMap<string, string>;
 }
 
+/** Turno conocido por el programador, para distinguir cambios reales. */
+export interface TrackedShift {
+  /** Misma firma que `ShiftReminderPlan.signature`. */
+  signature: string;
+  /** Fecha local del turno. */
+  shiftDate: string;
+  /** Instante en el que estaba programado su aviso. */
+  reminderAt: number;
+}
+
+/**
+ * Clasifica la relación entre el turno conocido y el plan recalculado.
+ *
+ * Evita confundir el avance natural de la agenda con un cambio de turno: cuando
+ * el aviso del turno anterior ya pasó, `buildShiftReminder` devuelve el
+ * siguiente turno y la firma cambia aunque nada haya cambiado de verdad.
+ */
+export type ShiftChangeSignal =
+  "initial" | "unchanged" | "natural-advance" | "changed";
+
+export function classifyShiftChange(
+  previous: TrackedShift | null,
+  next: ShiftReminderPlan,
+  now: number,
+): ShiftChangeSignal {
+  // Primer turno visto en esta sesión: no hay nada con lo que comparar.
+  if (previous === null) {
+    return "initial";
+  }
+  // Mismo turno, mismo horario y mismo tipo.
+  if (previous.signature === next.signature) {
+    return "unchanged";
+  }
+  // Aparece un turno anterior al conocido: es un cambio real.
+  if (next.shiftDate < previous.shiftDate) {
+    return "changed";
+  }
+  if (next.shiftDate > previous.shiftDate) {
+    // Si el aviso del turno anterior ya había pasado, el nuevo plan es solo el
+    // siguiente turno de la agenda. No debe notificarse como cambio.
+    return previous.reminderAt <= now ? "natural-advance" : "changed";
+  }
+  // Misma fecha con distinta firma: cambió el tipo de turno o el horario.
+  return "changed";
+}
+
 /** Etiqueta temporal relativa del turno: "hoy", "mañana" o su fecha. */
 function whenLabel(shiftDate: string, today: string): string {
   const days = daysBetweenLocal(today, shiftDate);
@@ -60,18 +106,23 @@ function intervalsLabel(day: ResolvedDay): string {
 }
 
 /**
- * Devuelve el próximo aviso de turno. Recorre los días en orden y se queda con
- * el primer turno cuyo instante de aviso (`inicio - antelación`) sea futuro.
- * Los días sin horario o de descanso se ignoran.
+ * Devuelve el próximo aviso de turno. Recorre los días ordenados por fecha y se
+ * queda con el primer turno cuyo instante de aviso (`inicio - antelación`) sea
+ * futuro. Los días sin horario o de descanso se ignoran.
  */
 export function buildShiftReminder(
   input: BuildReminderInput,
 ): ShiftReminderPlan | undefined {
   const leadMilliseconds = input.leadMinutes * MILLISECONDS_PER_MINUTE;
 
-  // Se asume que `days` viene ordenado por fecha: el primer turno que cumpla
-  // las condiciones es el que se devuelve.
-  for (const day of input.days) {
+  // Se ordena una copia para no depender del orden en que el backend devuelva
+  // los días: el primero que cumpla las condiciones debe ser el más próximo.
+  // Las fechas `YYYY-MM-DD` se comparan lexicográficamente.
+  const days = [...input.days].sort((left, right) =>
+    left.date.localeCompare(right.date),
+  );
+
+  for (const day of days) {
     // Los descansos no generan aviso.
     if (day.kind !== "shift") {
       continue;
@@ -117,8 +168,9 @@ export function buildShiftReminder(
       // Ejemplo: "Noche · mañana, 22:00–06:00 (8 h)" (nombre del turno, día,
       // horario y duración). El nombre y el paréntesis con la duración solo
       // se añaden si hay texto.
-      body: `${name}${whenLabel(day.date, input.today)}, ${schedule}${duration.length > 0 ? ` (${duration})` : ""
-        }`,
+      body: `${name}${whenLabel(day.date, input.today)}, ${schedule}${
+        duration.length > 0 ? ` (${duration})` : ""
+      }`,
       // Etiqueta por fecha: una notificación nueva del mismo día sustituye a
       // la anterior en lugar de apilarse.
       tag: `shift-reminder-${day.date}`,
