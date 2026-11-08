@@ -40,8 +40,9 @@ export function AppHeader() {
   const { signOut } = useAuthActions();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // En páginas de autenticación directa no mostramos duplicada la cabecera si no es necesario
   const isAuthPage = pathname === "/signin";
+  // Solo mostramos los enlaces de la app si el usuario está autenticado y no está en la página de login
+  const showNavLinks = isAuthenticated && !isAuthPage;
 
   return (
     <header className="border-border/60 bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-40 w-full border-b backdrop-blur">
@@ -58,8 +59,8 @@ export function AppHeader() {
             <span className="text-base font-bold">ShiftManager</span>
           </Link>
 
-          {/* Enlaces de escritorio */}
-          {!isAuthPage ? (
+          {/* Enlaces de escritorio: solo visibles cuando hay sesión */}
+          {showNavLinks ? (
             <nav
               className="hidden items-center gap-1 md:flex"
               aria-label="Navegación principal"
@@ -88,7 +89,7 @@ export function AppHeader() {
         </div>
 
         {/* Acciones de usuario / Login */}
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="flex items-center gap-2">
           {isLoading ? (
             <div className="bg-muted h-8 w-20 animate-pulse rounded" />
           ) : isAuthenticated ? (
@@ -99,7 +100,7 @@ export function AppHeader() {
               className="text-muted-foreground hover:text-foreground gap-1.5"
             >
               <LogOut className="h-4 w-4" />
-              <span>Cerrar sesión</span>
+              <span className="hidden sm:inline">Cerrar sesión</span>
             </Button>
           ) : (
             <Button
@@ -114,29 +115,29 @@ export function AppHeader() {
               </Link>
             </Button>
           )}
-        </div>
 
-        {/* Botón hamburguesa para móvil */}
-        {!isAuthPage ? (
-          <div className="flex md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setMobileMenuOpen((open) => !open)}
-              aria-label="Alternar menú"
-            >
-              {mobileMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-        ) : null}
+          {/* Botón hamburguesa móvil: solo si hay enlaces que mostrar */}
+          {showNavLinks ? (
+            <div className="flex md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileMenuOpen((open) => !open)}
+                aria-label="Alternar menú"
+              >
+                {mobileMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      {/* Menú desplegable móvil */}
-      {mobileMenuOpen && !isAuthPage ? (
+      {/* Menú desplegable móvil: solo si hay sesión */}
+      {mobileMenuOpen && showNavLinks ? (
         <div className="border-border bg-background border-b px-4 py-3 md:hidden">
           <nav className="flex flex-col gap-1" aria-label="Navegación móvil">
             {NAV_LINKS.map(({ href, label, icon: Icon }) => {
@@ -159,33 +160,6 @@ export function AppHeader() {
                 </Link>
               );
             })}
-            <div className="border-border/60 mt-2 border-t pt-2">
-              {isAuthenticated ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground w-full justify-start gap-2"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    void signOut();
-                  }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Cerrar sesión</span>
-                </Button>
-              ) : (
-                <Button
-                  asChild
-                  size="sm"
-                  className="w-full justify-start gap-2"
-                >
-                  <Link href="/signin" onClick={() => setMobileMenuOpen(false)}>
-                    <LogIn className="h-4 w-4" />
-                    <span>Entrar</span>
-                  </Link>
-                </Button>
-              )}
-            </div>
           </nav>
         </div>
       ) : null}
