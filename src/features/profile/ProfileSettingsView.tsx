@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * ProfileSettingsView
- * ----------------------------------------------------------------------------
- * Formulario de perfil y configuración regional: nombre y zona horaria IANA.
- *
- * La zona horaria se guarda en `users.timezone` y la usan el motor de turnos,
- * los cálculos de horas y los recordatorios. El locale se muestra como dato
- * informativo porque el MVP solo está disponible en español.
- */
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
@@ -17,6 +7,8 @@ import {
   CheckCircle2,
   Clock,
   Globe2,
+  Mail,
+  MapPin,
   Save,
   UserRound,
 } from "lucide-react";
@@ -33,6 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { convexErrorMessage } from "@/lib/utils/convex-error";
 import {
   DEFAULT_TIMEZONE,
@@ -69,7 +62,6 @@ type IntlWithSupportedValues = typeof Intl & {
   supportedValuesOf?: (key: "timeZone") => string[];
 };
 
-/** Lista de zonas horarias disponibles, incluida la actual del usuario. */
 function timezoneOptions(current: string): string[] {
   const intl = Intl as IntlWithSupportedValues;
   const supported = intl.supportedValuesOf?.("timeZone") ?? FALLBACK_TIMEZONES;
@@ -150,17 +142,20 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
 
   return (
     <Card className="border-border/80 overflow-hidden rounded-2xl shadow-2xs">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
-            <UserRound className="size-4" aria-hidden />
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+            <UserRound className="size-5" aria-hidden />
           </div>
-          Perfil y configuración regional
-        </CardTitle>
-        <CardDescription className="text-xs sm:text-sm">
-          {profile.email.length > 0 ? `Cuenta: ${profile.email}. ` : ""}
-          La zona horaria se usa para calcular turnos, horas y recordatorios.
-        </CardDescription>
+          <div>
+            <CardTitle className="text-base font-semibold">
+              Perfil y configuración regional
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              Tu identidad en la app y la zona horaria utilizada en los turnos y cálculos.
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <form
@@ -168,13 +163,28 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
           onSubmit={form.handleSubmit(handleSubmit)}
           onChange={() => setSaved(false)}
         >
+          {/* Fila informativa de la cuenta */}
+          {profile.email.length > 0 ? (
+            <div className="border-border/60 bg-muted/20 flex items-center gap-3 rounded-xl border px-3.5 py-2.5">
+              <Mail className="text-muted-foreground size-4 shrink-0" aria-hidden />
+              <div className="flex flex-wrap items-center gap-x-2 text-xs">
+                <span className="text-muted-foreground font-medium">Cuenta vinculada:</span>
+                <span className="font-semibold text-foreground">{profile.email}</span>
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Nombre */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="profile-name">Nombre</Label>
+              <Label htmlFor="profile-name" className="text-xs font-semibold">
+                Nombre de visualización
+              </Label>
               <Input
                 id="profile-name"
-                placeholder="Tu nombre"
+                placeholder="Tu nombre o alias"
                 autoComplete="name"
+                className="h-9"
                 aria-invalid={form.formState.errors.name ? true : undefined}
                 {...form.register("name")}
               />
@@ -183,55 +193,71 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
                   {form.formState.errors.name.message}
                 </p>
               ) : (
-                <p className="text-muted-foreground text-xs">
-                  Opcional; se usa para identificarte en la aplicación.
+                <p className="text-muted-foreground text-[11px]">
+                  Opcional; se usa para identificarte en la interfaz.
                 </p>
               )}
             </div>
 
+            {/* Zona horaria */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="profile-timezone">Zona horaria</Label>
-              <select
-                id="profile-timezone"
-                className="border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-8 w-full min-w-0 rounded-lg border bg-transparent px-2.5 text-base outline-none focus-visible:ring-3 md:text-sm"
-                aria-invalid={form.formState.errors.timezone ? true : undefined}
-                {...form.register("timezone")}
-              >
-                {timezones.map((timezone) => (
-                  <option key={timezone} value={timezone}>
-                    {timezone}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="text-muted-foreground size-3.5" aria-hidden />
+                <Label htmlFor="profile-timezone" className="text-xs font-semibold">
+                  Zona horaria
+                </Label>
+              </div>
+              <div className="relative">
+                <select
+                  id="profile-timezone"
+                  className={cn(
+                    "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30",
+                    "h-9 w-full min-w-0 rounded-lg border bg-transparent px-3 text-sm outline-none transition-colors",
+                    "focus-visible:ring-3 cursor-pointer"
+                  )}
+                  aria-invalid={form.formState.errors.timezone ? true : undefined}
+                  {...form.register("timezone")}
+                >
+                  {timezones.map((tz) => (
+                    <option key={tz} value={tz} className="bg-background text-foreground">
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+              </div>
               {form.formState.errors.timezone ? (
                 <p className="text-destructive text-xs" role="alert">
                   {form.formState.errors.timezone.message}
                 </p>
               ) : (
-                <p className="text-muted-foreground text-xs">
-                  Por ejemplo, <code>Europe/Madrid</code>. Se aplica al
-                  calendario y a las horas.
+                <p className="text-muted-foreground text-[11px]">
+                  Afecta a la resolución del calendario y los recordatorios.
                 </p>
               )}
             </div>
           </div>
 
+          {/* Idioma y formato regional */}
           <div className="border-border/70 bg-muted/20 flex items-start gap-3 rounded-xl border p-3.5">
-            <Globe2
-              className="text-muted-foreground mt-0.5 size-4 shrink-0"
-              aria-hidden
-            />
+            <div className="bg-background border-border/80 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border shadow-2xs">
+              <Globe2 className="text-primary size-4" aria-hidden />
+            </div>
             <div className="flex flex-col gap-0.5">
-              <Label className="text-xs font-semibold">
-                Idioma y formato regional
-              </Label>
-              <p className="text-sm">{profile.locale}</p>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-semibold">
+                  Idioma y formato regional
+                </Label>
+                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary uppercase">
+                  {profile.locale}
+                </span>
+              </div>
               <p className="text-muted-foreground text-xs">
-                El MVP está disponible solo en español (es-ES).
+                Actualmente optimizado en español estándar (es-ES).
               </p>
             </div>
           </div>
 
+          {/* Errores y confirmación */}
           {error !== null ? (
             <div
               className="bg-destructive/10 border-destructive/20 text-destructive flex items-center gap-2 rounded-xl border p-3 text-xs"

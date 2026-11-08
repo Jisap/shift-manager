@@ -2,6 +2,19 @@
 
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
+import {
+  AlertCircle,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  KeyRound,
+  Layers,
+  Lock,
+  LogIn,
+  LogOut,
+  Mail,
+  UserPlus,
+} from "lucide-react";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,39 +47,59 @@ export function AuthForm() {
   const [flow, setFlow] = useState<Flow>("signIn");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  // Email al que se envió el código, para el segundo paso del restablecimiento.
   const [resetEmail, setResetEmail] = useState<string | null>(null);
 
   if (isLoading) {
-    return <p className="text-muted-foreground text-sm">Cargando…</p>;
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+        <Clock className="size-4 animate-spin" />
+        <span>Cargando…</span>
+      </div>
+    );
   }
 
   if (isAuthenticated) {
     return (
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Sesión iniciada</CardTitle>
-          <CardDescription>
-            Tu cuenta está conectada correctamente.
+      <Card className="w-full max-w-sm rounded-2xl border-border/80 shadow-2xs overflow-hidden">
+        <CardHeader className="pb-3 text-center">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+            <CheckCircle2 className="size-6" />
+          </div>
+          <CardTitle className="text-lg font-bold">Sesión iniciada</CardTitle>
+          <CardDescription className="text-xs">
+            Tu cuenta está conectada y sincronizada correctamente.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <Button asChild className="w-full">
-            <Link href="/shifts">Gestionar turnos</Link>
+        <CardContent className="flex flex-col gap-2.5 pt-2">
+          <Button asChild className="w-full gap-2 shadow-2xs">
+            <Link href="/calendar">
+              <CalendarDays className="size-4" />
+              <span>Ver calendario</span>
+            </Link>
           </Button>
-          <Button asChild className="w-full" variant="outline">
-            <Link href="/patterns">Gestionar patrones</Link>
+          <Button asChild className="w-full gap-2" variant="outline">
+            <Link href="/shifts">
+              <Clock className="size-4" />
+              <span>Gestionar turnos</span>
+            </Link>
           </Button>
-          <Button asChild className="w-full" variant="outline">
-            <Link href="/calendar">Ver calendario</Link>
+          <Button asChild className="w-full gap-2" variant="outline">
+            <Link href="/patterns">
+              <Layers className="size-4" />
+              <span>Gestionar patrones</span>
+            </Link>
           </Button>
-          <Button
-            className="w-full"
-            variant="ghost"
-            onClick={() => void signOut()}
-          >
-            Cerrar sesión
-          </Button>
+          <div className="pt-2">
+            <Button
+              className="w-full gap-2 text-muted-foreground hover:text-destructive"
+              variant="ghost"
+              size="sm"
+              onClick={() => void signOut()}
+            >
+              <LogOut className="size-4" />
+              <span>Cerrar sesión</span>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -100,9 +133,7 @@ export function AuthForm() {
         try {
           await signIn("password", formData);
         } catch {
-          // No se revela si el email existe: se avanza igualmente al paso del
-          // código. Si la cuenta no existe, simplemente no llegará ningún
-          // correo y el usuario puede volver atrás.
+          // No se revela si existe para prevenir enumeración
         }
         setResetEmail(parsed.data.email);
         setFlow("reset");
@@ -155,16 +186,34 @@ export function AuthForm() {
           : `Introduce el código enviado a ${resetEmail ?? "tu email"} y elige una nueva contraseña.`;
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>{FLOW_TITLES[flow]}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+    <Card className="w-full max-w-sm rounded-2xl border-border/80 shadow-2xs overflow-hidden">
+      <CardHeader className="space-y-1.5 pb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+            {flow === "signIn" ? (
+              <LogIn className="size-4" />
+            ) : flow === "signUp" ? (
+              <UserPlus className="size-4" />
+            ) : (
+              <KeyRound className="size-4" />
+            )}
+          </div>
+          <div>
+            <CardTitle className="text-base font-semibold">{FLOW_TITLES[flow]}</CardTitle>
+            <CardDescription className="text-xs leading-relaxed">{description}</CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           {flow !== "reset" ? (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <Mail className="text-muted-foreground size-3.5" />
+                <Label htmlFor="email" className="text-xs font-semibold">
+                  Email
+                </Label>
+              </div>
               <Input
                 id="email"
                 name="email"
@@ -172,6 +221,7 @@ export function AuthForm() {
                 autoComplete="email"
                 placeholder="tu@email.com"
                 defaultValue={resetEmail ?? ""}
+                className="h-9"
                 required
               />
             </div>
@@ -180,8 +230,25 @@ export function AuthForm() {
           )}
 
           {flow === "signIn" || flow === "signUp" ? (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password">Contraseña</Label>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Lock className="text-muted-foreground size-3.5" />
+                  <Label htmlFor="password" className="text-xs font-semibold">
+                    Contraseña
+                  </Label>
+                </div>
+                {flow === "signIn" ? (
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="text-[11px] text-primary hover:underline"
+                    onClick={() => changeFlow("forgot")}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                ) : null}
+              </div>
               <Input
                 id="password"
                 name="password"
@@ -190,6 +257,7 @@ export function AuthForm() {
                   flow === "signIn" ? "current-password" : "new-password"
                 }
                 minLength={8}
+                className="h-9"
                 required
               />
             </div>
@@ -197,8 +265,13 @@ export function AuthForm() {
 
           {flow === "reset" ? (
             <>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="code">Código de verificación</Label>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <KeyRound className="text-muted-foreground size-3.5" />
+                  <Label htmlFor="code" className="text-xs font-semibold">
+                    Código de verificación
+                  </Label>
+                </div>
                 <Input
                   id="code"
                   name="code"
@@ -208,32 +281,38 @@ export function AuthForm() {
                   pattern="[0-9]{8}"
                   maxLength={8}
                   placeholder="12345678"
+                  className="h-9 tracking-widest text-center font-mono font-bold"
                   required
                 />
-                <p className="text-muted-foreground text-xs">
-                  Revisa también la carpeta de spam. El código caduca en 24
-                  horas.
+                <p className="text-muted-foreground text-[11px]">
+                  Revisa también la carpeta de spam. El código caduca en 24 horas.
                 </p>
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="newPassword">Nueva contraseña</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="newPassword" className="text-xs font-semibold">
+                  Nueva contraseña
+                </Label>
                 <Input
                   id="newPassword"
                   name="newPassword"
                   type="password"
                   autoComplete="new-password"
                   minLength={8}
+                  className="h-9"
                   required
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="confirmPassword">Repite la contraseña</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="confirmPassword" className="text-xs font-semibold">
+                  Repite la contraseña
+                </Label>
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
                   autoComplete="new-password"
                   minLength={8}
+                  className="h-9"
                   required
                 />
               </div>
@@ -241,12 +320,16 @@ export function AuthForm() {
           ) : null}
 
           {error ? (
-            <p className="text-destructive text-sm" role="alert">
-              {error}
-            </p>
+            <div
+              className="bg-destructive/10 border-destructive/20 text-destructive flex items-center gap-2 rounded-xl border p-2.5 text-xs"
+              role="alert"
+            >
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{error}</span>
+            </div>
           ) : null}
 
-          <Button type="submit" className="w-full" disabled={pending}>
+          <Button type="submit" className="w-full shadow-2xs h-9 mt-1" disabled={pending}>
             {pending
               ? flow === "forgot"
                 ? "Enviando…"
@@ -260,38 +343,31 @@ export function AuthForm() {
                     : "Cambiar contraseña"}
           </Button>
 
-          {flow === "signIn" ? (
-            <Button
-              type="button"
-              variant="link"
-              className="w-full"
-              onClick={() => changeFlow("forgot")}
-            >
-              ¿Olvidaste tu contraseña?
-            </Button>
-          ) : null}
-
-          {flow === "signIn" || flow === "signUp" ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() =>
-                changeFlow(flow === "signIn" ? "signUp" : "signIn")
-              }
-            >
-              {flow === "signIn" ? "No tengo cuenta" : "Ya tengo cuenta"}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => changeFlow("signIn")}
-            >
-              Volver a iniciar sesión
-            </Button>
-          )}
+          <div className="border-t border-border/60 pt-3 text-center">
+            {flow === "signIn" || flow === "signUp" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+                onClick={() =>
+                  changeFlow(flow === "signIn" ? "signUp" : "signIn")
+                }
+              >
+                {flow === "signIn" ? "No tengo cuenta" : "Ya tengo cuenta"}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => changeFlow("signIn")}
+              >
+                Volver a iniciar sesión
+              </Button>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>
