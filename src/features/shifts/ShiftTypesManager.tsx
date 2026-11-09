@@ -2,9 +2,20 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import {
+  Archive,
+  Clock,
+  Coffee,
+  Copy,
+  Layers,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -17,12 +28,24 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   defaultShiftType,
   shiftTypeSchema,
   totalBreakMinutes,
   type ShiftTypeInput,
 } from "@/lib/validators/shift";
+
+/** Paleta de colores recomendados para turnos habituales (mañana, tarde, noche, etc.) */
+const PRESET_COLORS = [
+  { label: "Ámbar / Mañana", value: "#f59e0b" },
+  { label: "Azul / Tarde", value: "#3b82f6" },
+  { label: "Índigo / Noche", value: "#6366f1" },
+  { label: "Esmeralda / Refuerzo", value: "#10b981" },
+  { label: "Rosa / Guardia", value: "#ec4899" },
+  { label: "Púrpura / Partido", value: "#8b5cf6" },
+  { label: "Gris / Especial", value: "#64748b" },
+];
 
 export function ShiftTypesManager() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -42,13 +65,21 @@ export function ShiftTypesManager() {
   const intervals = useFieldArray({ control: form.control, name: "intervals" });
   const breaks = useFieldArray({ control: form.control, name: "breaks" });
 
+  const currentColor = useWatch({ control: form.control, name: "color" });
+  const isBreakPaid = useWatch({ control: form.control, name: "breakPaid" });
+
   if (isLoading) {
-    return <p className="text-muted-foreground text-sm">Cargando…</p>;
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground text-sm py-8">
+        <Clock className="size-4 animate-spin" />
+        <span>Cargando turnos…</span>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
     return (
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md rounded-2xl shadow-2xs">
         <CardHeader>
           <CardTitle>Inicia sesión</CardTitle>
           <CardDescription>
@@ -99,7 +130,6 @@ export function ShiftTypesManager() {
     });
   }
 
-  /** Duplica un turno en el backend y limpia cualquier error previo. */
   async function duplicate(id: Id<"shiftTypes">) {
     setListError(null);
     try {
@@ -109,7 +139,6 @@ export function ShiftTypesManager() {
     }
   }
 
-  /** Archiva un turno y muestra un aviso si el backend lo rechaza. */
   async function archive(id: Id<"shiftTypes">) {
     setListError(null);
     try {
@@ -120,22 +149,43 @@ export function ShiftTypesManager() {
   }
 
   return (
-    <div className="grid w-full gap-8 lg:grid-cols-[22rem_1fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>{editingId ? "Editar turno" : "Nuevo turno"}</CardTitle>
-          <CardDescription>
-            Define el nombre, el color y los intervalos de trabajo.
-          </CardDescription>
+    <div className="grid w-full items-start gap-8 lg:grid-cols-[24rem_1fr]">
+      {/* Formulario de creación / edición */}
+      <Card className="border-border/80 sticky top-20 rounded-2xl shadow-2xs overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="flex size-8 items-center justify-center rounded-lg text-white shadow-xs"
+              style={{ backgroundColor: currentColor || "#4f46e5" }}
+            >
+              <Clock className="size-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold">
+                {editingId ? "Editar turno" : "Nuevo tipo de turno"}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Define el nombre, color identificador y tramos horarios.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form
             className="flex flex-col gap-4"
             onSubmit={form.handleSubmit(onSubmit)}
           >
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="name">Nombre</Label>
-              <Input id="name" {...form.register("name")} />
+            {/* Nombre */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="name" className="text-xs font-semibold">
+                Nombre del turno
+              </Label>
+              <Input
+                id="name"
+                placeholder="Ej. Mañana, Tarde, Guardia..."
+                className="h-9"
+                {...form.register("name")}
+              />
               {form.formState.errors.name ? (
                 <p className="text-destructive text-xs">
                   {form.formState.errors.name.message}
@@ -143,129 +193,230 @@ export function ShiftTypesManager() {
               ) : null}
             </div>
 
-            <div className="grid grid-cols-[1fr_4rem] items-end gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Input id="description" {...form.register("description")} />
+            {/* Descripción */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="description" className="text-xs font-semibold">
+                Descripción (opcional)
+              </Label>
+              <Input
+                id="description"
+                placeholder="Notas de apoyo o centro de trabajo"
+                className="h-9"
+                {...form.register("description")}
+              />
+            </div>
+
+            {/* Selector de Color con Presets */}
+            <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 p-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="color" className="text-xs font-semibold">
+                  Color distintivo
+                </Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-muted-foreground uppercase">
+                    {currentColor}
+                  </span>
+                  <input
+                    id="color"
+                    type="color"
+                    aria-label="Color personalizado"
+                    className="size-6 cursor-pointer rounded-md border border-border/60 bg-transparent p-0.5"
+                    {...form.register("color")}
+                  />
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="color">Color</Label>
-                <Input
-                  id="color"
-                  type="color"
-                  className="h-8 px-1"
-                  {...form.register("color")}
-                />
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {PRESET_COLORS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    title={preset.label}
+                    onClick={() => form.setValue("color", preset.value, { shouldDirty: true })}
+                    className={cn(
+                      "size-6 rounded-full border-2 transition-transform hover:scale-110",
+                      currentColor?.toLowerCase() === preset.value.toLowerCase()
+                        ? "border-primary ring-2 ring-primary/40 scale-105"
+                        : "border-background shadow-2xs"
+                    )}
+                    style={{ backgroundColor: preset.value }}
+                  />
+                ))}
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
+            {/* Intervalos de trabajo */}
+            <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 p-3">
               <div className="flex items-center justify-between">
-                <Label>Intervalos</Label>
+                <Label className="text-xs font-semibold">Intervalos de trabajo</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
                   onClick={() =>
                     intervals.append({ start: "08:00", end: "16:00" })
                   }
                   disabled={intervals.fields.length >= 4}
                 >
-                  Añadir
+                  <Plus className="size-3" />
+                  <span>Tramo</span>
                 </Button>
               </div>
-              {intervals.fields.map((field, index) => (
-                <div key={field.id} className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    aria-label={`Entrada ${index + 1}`}
-                    {...form.register(`intervals.${index}.start`)}
-                  />
-                  <Input
-                    type="time"
-                    aria-label={`Salida ${index + 1}`}
-                    {...form.register(`intervals.${index}.end`)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => intervals.remove(index)}
-                    disabled={intervals.fields.length === 1}
-                  >
-                    Quitar
-                  </Button>
-                </div>
-              ))}
+
+              <div className="flex flex-col gap-2 pt-1">
+                {intervals.fields.map((field, index) => (
+                  <div key={field.id} className="flex items-center gap-2">
+                    <div className="grid flex-1 grid-cols-2 gap-2">
+                      <Input
+                        type="time"
+                        className="h-8 text-center text-xs"
+                        aria-label={`Entrada ${index + 1}`}
+                        {...form.register(`intervals.${index}.start`)}
+                      />
+                      <Input
+                        type="time"
+                        className="h-8 text-center text-xs"
+                        aria-label={`Salida ${index + 1}`}
+                        {...form.register(`intervals.${index}.end`)}
+                      />
+                    </div>
+                    {intervals.fields.length > 1 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => intervals.remove(index)}
+                        aria-label="Quitar tramo"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="flex flex-col gap-2">
+            {/* Descansos y pausas */}
+            <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 p-3">
               <div className="flex items-center justify-between">
-                <Label>Descansos</Label>
+                <div className="flex items-center gap-1.5">
+                  <Coffee className="size-3.5 text-muted-foreground" />
+                  <Label className="text-xs font-semibold">Descansos no computables</Label>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
                   onClick={() =>
                     breaks.append({ start: "13:00", end: "14:00" })
                   }
                   disabled={breaks.fields.length >= 3}
                 >
-                  Añadir descanso
+                  <Plus className="size-3" />
+                  <span>Pausa</span>
                 </Button>
               </div>
+
               {breaks.fields.length === 0 ? (
-                <p className="text-muted-foreground text-xs">Sin descansos.</p>
+                <p className="text-muted-foreground py-1 text-xs">Sin pausas programadas.</p>
               ) : null}
-              {breaks.fields.map((field, index) => (
-                <div key={field.id} className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    aria-label={`Inicio del descanso ${index + 1}`}
-                    {...form.register(`breaks.${index}.start`)}
-                  />
-                  <Input
-                    type="time"
-                    aria-label={`Fin del descanso ${index + 1}`}
-                    {...form.register(`breaks.${index}.end`)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => breaks.remove(index)}
-                  >
-                    Quitar
-                  </Button>
+
+              <div className="flex flex-col gap-2 pt-1">
+                {breaks.fields.map((field, index) => (
+                  <div key={field.id} className="flex items-center gap-2">
+                    <div className="grid flex-1 grid-cols-2 gap-2">
+                      <Input
+                        type="time"
+                        className="h-8 text-center text-xs"
+                        aria-label={`Inicio del descanso ${index + 1}`}
+                        {...form.register(`breaks.${index}.start`)}
+                      />
+                      <Input
+                        type="time"
+                        className="h-8 text-center text-xs"
+                        aria-label={`Fin del descanso ${index + 1}`}
+                        {...form.register(`breaks.${index}.end`)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => breaks.remove(index)}
+                      aria-label="Quitar descanso"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Fila interruptor para descanso remunerado */}
+              <div
+                onClick={() =>
+                  form.setValue("breakPaid", !isBreakPaid, { shouldDirty: true })
+                }
+                className={cn(
+                  "mt-1 flex cursor-pointer items-center justify-between rounded-lg border p-2.5 transition-colors select-none",
+                  isBreakPaid
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-border/60 bg-background/50 hover:bg-muted/40"
+                )}
+              >
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium">Descanso remunerado</span>
+                  <span className="text-muted-foreground text-[10px]">
+                    Cuenta dentro del cómputo de horas de la jornada
+                  </span>
                 </div>
-              ))}
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" {...form.register("breakPaid")} />
-                Descanso remunerado
-              </label>
+                <div
+                  className={cn(
+                    "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+                    isBreakPaid ? "bg-primary" : "bg-muted-foreground/30"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none block h-4 w-4 rounded-full bg-white shadow-xs transition-transform",
+                      isBreakPaid ? "translate-x-4" : "translate-x-0.5"
+                    )}
+                  />
+                </div>
+              </div>
             </div>
 
             {error ? (
-              <p className="text-destructive text-sm" role="alert">
+              <p className="text-destructive text-xs" role="alert">
                 {error}
               </p>
             ) : null}
 
-            <div className="flex gap-2">
-              <Button type="submit" disabled={form.formState.isSubmitting}>
+            <div className="flex gap-2 pt-1">
+              <Button
+                type="submit"
+                size="sm"
+                className="flex-1 shadow-2xs"
+                disabled={form.formState.isSubmitting}
+              >
                 {editingId ? "Guardar cambios" : "Crear turno"}
               </Button>
               {editingId ? (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
                   onClick={() => {
                     setEditingId(null);
                     setError(null);
                     form.reset(defaultShiftType);
                   }}
                 >
-                  Cancelar
+                  <X className="size-3.5" />
+                  <span>Cancelar</span>
                 </Button>
               ) : null}
             </div>
@@ -273,80 +424,153 @@ export function ShiftTypesManager() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Tus turnos</h2>
+      {/* Listado de turnos creados */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-foreground">
+              Catálogo de turnos
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              Turnos disponibles para componer tus patrones y calendarios.
+            </p>
+          </div>
+          {shifts && shifts.length > 0 ? (
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+              {shifts.length} {shifts.length === 1 ? "turno" : "turnos"}
+            </span>
+          ) : null}
+        </div>
+
         {listError ? (
           <p className="text-destructive text-sm" role="alert">
             {listError}
           </p>
         ) : null}
+
         {shifts === undefined ? (
-          <p className="text-muted-foreground text-sm">Cargando turnos…</p>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm py-8">
+            <Clock className="size-4 animate-spin" />
+            <span>Cargando turnos…</span>
+          </div>
         ) : shifts.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            Todavía no has creado ningún turno.
-          </p>
+          /* Estado vacío ilustrado */
+          <Card className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border-dashed">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3">
+              <Layers className="size-6" />
+            </div>
+            <CardTitle className="text-base font-semibold">
+              Todavía no has creado ningún turno
+            </CardTitle>
+            <CardDescription className="max-w-xs text-xs mt-1">
+              Usa el formulario lateral para definir tu primer turno de mañana, tarde, noche o partido.
+            </CardDescription>
+          </Card>
         ) : (
-          shifts.map((shift) => (
-            <Card key={shift._id}>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="size-4 rounded-full border"
+          /* Cuadrícula moderna de turnos */
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {shifts.map((shift) => (
+              <Card
+                key={shift._id}
+                className={cn(
+                  "border-border/80 flex flex-col justify-between overflow-hidden rounded-2xl shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs",
+                  editingId === shift._id && "ring-2 ring-primary ring-offset-2"
+                )}
+              >
+                <div>
+                  {/* Franja superior de color */}
+                  <div
+                    className="h-1.5 w-full"
                     style={{ backgroundColor: shift.color }}
-                    aria-hidden
                   />
-                  <CardTitle>{shift.name}</CardTitle>
+                  <CardHeader className="p-4 pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="size-3.5 shrink-0 rounded-full border border-background shadow-xs"
+                          style={{ backgroundColor: shift.color }}
+                          aria-hidden
+                        />
+                        <CardTitle className="text-base font-semibold truncate">
+                          {shift.name}
+                        </CardTitle>
+                      </div>
+                    </div>
+                    {shift.description ? (
+                      <CardDescription className="text-xs line-clamp-1">
+                        {shift.description}
+                      </CardDescription>
+                    ) : null}
+                  </CardHeader>
+
+                  <CardContent className="p-4 pt-1 flex flex-col gap-2">
+                    {/* Intervalos */}
+                    <div className="flex flex-wrap gap-1 text-xs">
+                      {shift.intervals.map((interval) => (
+                        <span
+                          key={`${interval.start}-${interval.end}`}
+                          className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 font-medium"
+                        >
+                          {interval.start} – {interval.end}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Descansos */}
+                    <p className="text-muted-foreground text-xs flex items-center gap-1.5">
+                      <Coffee className="size-3 shrink-0" />
+                      <span>
+                        {shift.breaks && shift.breaks.length > 0
+                          ? `${shift.breaks
+                              .map((rest) => `${rest.start}–${rest.end}`)
+                              .join(", ")} (${shift.breakMinutes} min${
+                              shift.breakPaid ? " · pagado" : ""
+                            })`
+                          : "Sin descansos"}
+                      </span>
+                    </p>
+                  </CardContent>
                 </div>
-                {shift.description ? (
-                  <CardDescription>{shift.description}</CardDescription>
-                ) : null}
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <p className="text-sm">
-                  {shift.intervals
-                    .map((interval) => `${interval.start}–${interval.end}`)
-                    .join(" · ")}
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  {shift.breaks && shift.breaks.length > 0
-                    ? `Descansos: ${shift.breaks
-                        .map((rest) => `${rest.start}–${rest.end}`)
-                        .join(" · ")} (${shift.breakMinutes} min)`
-                    : "Sin descansos"}
-                  {shift.breakPaid && shift.breakMinutes > 0
-                    ? " · remunerado"
-                    : ""}
-                </p>
-                <div className="flex flex-wrap gap-2">
+
+                {/* Acciones */}
+                <div className="flex items-center justify-end gap-1 border-t border-border/60 bg-muted/20 p-2 px-3">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
+                    className="h-7 gap-1 px-2 text-xs"
                     onClick={() => startEditing(shift)}
+                    title="Editar turno"
                   >
-                    Editar
+                    <Pencil className="size-3" />
+                    <span>Editar</span>
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
+                    className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => void duplicate(shift._id)}
+                    title="Duplicar turno"
                   >
-                    Duplicar
+                    <Copy className="size-3" />
+                    <span>Duplicar</span>
                   </Button>
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="ghost"
                     size="sm"
+                    className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
                     onClick={() => void archive(shift._id)}
+                    title="Archivar turno"
                   >
-                    Archivar
+                    <Archive className="size-3" />
+                    <span>Archivar</span>
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))
+              </Card>
+            ))}
+          </div>
         )}
       </div>
     </div>
