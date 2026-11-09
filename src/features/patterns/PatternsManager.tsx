@@ -2,6 +2,17 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import {
+  Archive,
+  Calendar,
+  CalendarDays,
+  Check,
+  Clock,
+  Layers,
+  Pencil,
+  RotateCw,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -17,6 +28,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { weekdayOf } from "@/lib/dates/local-date";
 import { convexErrorMessage } from "@/lib/utils/convex-error";
 import {
@@ -27,9 +39,6 @@ import {
   WEEKLY_DAY_LABELS,
   type PatternFormValues,
 } from "@/lib/validators/pattern";
-
-const selectClassName =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 export function PatternsManager() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -57,13 +66,11 @@ export function PatternsManager() {
   const today = todayLocalDate();
 
   const shiftsById = useMemo(
-    () => new Map((shifts ?? []).map((shift) => [shift._id, shift])),
+    () => new Map((shifts ?? []).map((shift) => [shift._id as string, shift])),
     [shifts],
   );
 
   useEffect(() => {
-    // Sincroniza el tamaño del array `days` cuando cambia `type` o `cycleLength`.
-    // Si el ciclo crece, añade días de descanso al final; si reduce, los recorta.
     const target = type === "weekly" ? 7 : cycleLength;
     const current = form.getValues("days");
     if (!Number.isFinite(target) || target < 1 || current.length === target) {
@@ -84,12 +91,17 @@ export function PatternsManager() {
   }, [type, cycleLength, form]);
 
   if (isLoading) {
-    return <p className="text-muted-foreground text-sm">Cargando…</p>;
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground text-sm py-8">
+        <Clock className="size-4 animate-spin" />
+        <span>Cargando patrones…</span>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
     return (
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md rounded-2xl shadow-2xs">
         <CardHeader>
           <CardTitle>Inicia sesión</CardTitle>
           <CardDescription>
@@ -105,18 +117,12 @@ export function PatternsManager() {
     );
   }
 
-  /** Limpia el formulario y cancela la edición activa. */
   function resetForm() {
     setEditingId(null);
     setError(null);
     form.reset(defaultPatternValues());
   }
 
-  /**
-   * Al cambiar de tipo (semanal ↔ rotativo):
-   * - Fuerza `cycleLength = 7` en patrones semanales.
-   * - Si la `anchorDate` actual no es lunes, la reemplaza por el próximo lunes.
-   */
   function handleTypeChange(nextType: "weekly" | "rotating") {
     form.setValue("type", nextType, { shouldValidate: true });
     if (nextType === "weekly") {
@@ -129,31 +135,20 @@ export function PatternsManager() {
     }
   }
 
-  /**
-   * Actualiza el turno asignado a un día del ciclo en el estado del formulario.
-   * El valor `"__rest"` indica descanso y limpia el `shiftTypeId`.
-   */
   function updateDay(index: number, value: string) {
-    const current = form.getValues("days");
-    const next = current.map((day, dayIndex) => {
-      if (dayIndex !== index) {
-        return day;
-      }
-      if (value === "__rest") {
-        return { ...day, isRestDay: true, shiftTypeId: undefined };
-      }
-      return { ...day, isRestDay: false, shiftTypeId: value };
-    });
-    form.setValue("days", next, {
-      shouldDirty: true,
-      shouldValidate: form.formState.isSubmitted,
-    });
+    const isRest = value === "__rest";
+    form.setValue(
+      `days.${index}.isRestDay`,
+      isRest,
+      { shouldDirty: true, shouldValidate: true },
+    );
+    form.setValue(
+      `days.${index}.shiftTypeId`,
+      isRest ? undefined : (value as Id<"shiftTypes">),
+      { shouldDirty: true, shouldValidate: true },
+    );
   }
 
-  /**
-   * Envía el formulario al backend (creación o edición según `editingId`).
-   * Normaliza `endDate` vacío a `undefined` para el contrato de la API.
-   */
   async function onSubmit(values: PatternFormValues) {
     setError(null);
     const payload = {
@@ -162,14 +157,11 @@ export function PatternsManager() {
       cycleLength: values.type === "weekly" ? 7 : values.cycleLength,
       anchorDate: values.anchorDate,
       startDate: values.startDate,
-      endDate: values.endDate === "" ? undefined : values.endDate,
-      days: values.days.map((day, index) => ({
-        dayIndex: index,
+      endDate: values.endDate?.trim() ? values.endDate.trim() : undefined,
+      days: values.days.map((day) => ({
+        dayIndex: day.dayIndex,
         isRestDay: day.isRestDay,
-        shiftTypeId:
-          day.isRestDay || !day.shiftTypeId
-            ? undefined
-            : (day.shiftTypeId as Id<"shiftTypes">),
+        shiftTypeId: day.isRestDay ? undefined : (day.shiftTypeId as Id<"shiftTypes"> | undefined),
       })),
     };
 
@@ -185,7 +177,6 @@ export function PatternsManager() {
     }
   }
 
-  /** Carga los datos del patrón seleccionado en el formulario para editarlo. */
   function startEditing(pattern: NonNullable<typeof patterns>[number]) {
     setEditingId(pattern._id);
     setError(null);
@@ -204,7 +195,6 @@ export function PatternsManager() {
     });
   }
 
-  /** Envía el renombrado de un patrón y cierra el modo renombrar al terminar. */
   async function submitRename(id: Id<"shiftPatterns">) {
     setError(null);
     try {
@@ -216,10 +206,6 @@ export function PatternsManager() {
     }
   }
 
-  /**
-   * Archiva un patrón. Si el patrón archivado era el que se estaba editando,
-   * cancela la edición para evitar un estado inconsistente.
-   */
   async function archive(id: Id<"shiftPatterns">) {
     setError(null);
     try {
@@ -233,22 +219,40 @@ export function PatternsManager() {
   }
 
   return (
-    <div className="grid w-full gap-8 lg:grid-cols-[24rem_1fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>{editingId ? "Editar patrón" : "Nuevo patrón"}</CardTitle>
-          <CardDescription>
-            Define el ciclo y qué turno corresponde a cada día.
-          </CardDescription>
+    <div className="grid w-full items-start gap-8 lg:grid-cols-[25rem_1fr]">
+      {/* Formulario lateral de configuración */}
+      <Card className="border-border/80 sticky top-20 rounded-2xl shadow-2xs overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary shadow-xs">
+              <RotateCw className="size-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold">
+                {editingId ? "Editar patrón" : "Nuevo patrón de turnos"}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Define el ciclo semanal o rotativo y proyecta tus turnos automáticamente.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form
             className="flex flex-col gap-4"
             onSubmit={form.handleSubmit(onSubmit)}
           >
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="pattern-name">Nombre</Label>
-              <Input id="pattern-name" {...form.register("name")} />
+            {/* Nombre */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="pattern-name" className="text-xs font-semibold">
+                Nombre del patrón
+              </Label>
+              <Input
+                id="pattern-name"
+                placeholder="Ej. Ciclo 6-2, Turno M-T-N..."
+                className="h-9"
+                {...form.register("name")}
+              />
               {form.formState.errors.name ? (
                 <p className="text-destructive text-xs">
                   {form.formState.errors.name.message}
@@ -256,31 +260,51 @@ export function PatternsManager() {
               ) : null}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="pattern-type">Tipo</Label>
-                <select
-                  id="pattern-type"
-                  className={selectClassName}
-                  value={type}
-                  onChange={(event) =>
-                    handleTypeChange(
-                      event.target.value as "weekly" | "rotating",
-                    )
-                  }
+            {/* Selector de Tipo (Semanal vs Rotativo) */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Tipo de ciclo</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleTypeChange("weekly")}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-1 rounded-xl border p-2.5 text-xs font-medium transition-all select-none",
+                    type === "weekly"
+                      ? "border-primary bg-primary/5 text-primary shadow-2xs font-semibold"
+                      : "border-border/70 bg-card hover:bg-muted/40 text-muted-foreground"
+                  )}
                 >
-                  <option value="weekly">Semanal</option>
-                  <option value="rotating">Rotativo</option>
-                </select>
+                  <CalendarDays className="size-4" />
+                  <span>Semanal (7 días)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTypeChange("rotating")}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-1 rounded-xl border p-2.5 text-xs font-medium transition-all select-none",
+                    type === "rotating"
+                      ? "border-primary bg-primary/5 text-primary shadow-2xs font-semibold"
+                      : "border-border/70 bg-card hover:bg-muted/40 text-muted-foreground"
+                  )}
+                >
+                  <RotateCw className="size-4" />
+                  <span>Rotativo libre</span>
+                </button>
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="pattern-cycle">Días del ciclo</Label>
+            </div>
+
+            {/* Días del ciclo si es rotativo */}
+            {type === "rotating" ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="pattern-cycle" className="text-xs font-semibold">
+                  Duración del ciclo (días)
+                </Label>
                 <Input
                   id="pattern-cycle"
                   type="number"
                   min={1}
                   max={365}
-                  disabled={type === "weekly"}
+                  className="h-9 font-medium"
                   {...form.register("cycleLength", { valueAsNumber: true })}
                 />
                 {form.formState.errors.cycleLength ? (
@@ -289,15 +313,17 @@ export function PatternsManager() {
                   </p>
                 ) : null}
               </div>
-            </div>
+            ) : null}
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="pattern-anchor">
+            {/* Fecha ancla */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="pattern-anchor" className="text-xs font-semibold">
                 {type === "weekly" ? "Lunes de referencia" : "Día 0 del ciclo"}
               </Label>
               <Input
                 id="pattern-anchor"
                 type="date"
+                className="h-9"
                 {...form.register("anchorDate")}
               />
               {form.formState.errors.anchorDate ? (
@@ -307,12 +333,16 @@ export function PatternsManager() {
               ) : null}
             </div>
 
+            {/* Rango de vigencia */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="pattern-start">Empieza</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="pattern-start" className="text-xs font-semibold">
+                  Fecha inicio
+                </Label>
                 <Input
                   id="pattern-start"
                   type="date"
+                  className="h-9"
                   {...form.register("startDate")}
                 />
                 {form.formState.errors.startDate ? (
@@ -321,79 +351,129 @@ export function PatternsManager() {
                   </p>
                 ) : null}
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="pattern-end">Termina (opcional)</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="pattern-end" className="text-xs font-semibold">
+                  Fin (opcional)
+                </Label>
                 <Input
                   id="pattern-end"
                   type="date"
+                  className="h-9"
                   {...form.register("endDate")}
                 />
-                {form.formState.errors.endDate ? (
-                  <p className="text-destructive text-xs">
-                    {form.formState.errors.endDate.message}
-                  </p>
-                ) : null}
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label>Días del ciclo</Label>
-              <div className="flex flex-col gap-2">
-                {days.map((day, index) => (
-                  <div
-                    key={index}
-                    className="grid grid-cols-[4.5rem_1fr] items-center gap-2"
-                  >
-                    <span className="text-muted-foreground text-xs font-medium">
-                      {type === "weekly"
-                        ? WEEKLY_DAY_LABELS[index]
-                        : `Día ${index + 1}`}
-                    </span>
-                    <select
-                      aria-label={`Turno del día ${index + 1}`}
-                      className={selectClassName}
-                      value={day.isRestDay ? "__rest" : (day.shiftTypeId ?? "")}
-                      onChange={(event) => updateDay(index, event.target.value)}
-                    >
-                      <option value="__rest">Descanso</option>
-                      {(shifts ?? []).map((shift) => (
-                        <option key={shift._id} value={shift._id}>
-                          {shift.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+            {/* Asignación de turnos a los días del ciclo */}
+            <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Asignación por día del ciclo</Label>
+                <span className="text-[11px] text-muted-foreground font-medium">
+                  {days.length} {days.length === 1 ? "día" : "días"}
+                </span>
               </div>
+
+              {/* Tira de previsualización cromática en tiempo real */}
+              <div className="flex gap-1 overflow-x-auto py-1">
+                {days.map((day, idx) => {
+                  const shift = day.shiftTypeId ? shiftsById.get(day.shiftTypeId) : undefined;
+                  return (
+                    <div
+                      key={idx}
+                      title={`${type === "weekly" ? WEEKLY_DAY_LABELS[idx] : `Día ${idx + 1}`}: ${shift ? shift.name : "Descanso"}`}
+                      className="flex h-5 min-w-5 flex-1 items-center justify-center rounded text-[10px] font-bold text-white shadow-2xs"
+                      style={{
+                        backgroundColor: day.isRestDay || !shift ? "#94a3b8" : shift.color,
+                      }}
+                    >
+                      {type === "weekly" ? (WEEKLY_DAY_LABELS[idx]?.[0] ?? idx + 1) : idx + 1}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Selector por cada día */}
+              <div className="max-h-60 overflow-y-auto flex flex-col gap-2 pr-1 pt-1">
+                {days.map((day, index) => {
+                  const shift = day.shiftTypeId ? shiftsById.get(day.shiftTypeId) : undefined;
+                  return (
+                    <div
+                      key={index}
+                      className="grid grid-cols-[5rem_1fr] items-center gap-2 rounded-lg bg-background/60 p-1.5 border border-border/60"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: day.isRestDay || !shift ? "#94a3b8" : shift.color,
+                          }}
+                        />
+                        <span className="text-xs font-semibold text-foreground">
+                          {type === "weekly"
+                            ? WEEKLY_DAY_LABELS[index]
+                            : `Día ${index + 1}`}
+                        </span>
+                      </div>
+                      <select
+                        aria-label={`Turno del día ${index + 1}`}
+                        className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={day.isRestDay ? "__rest" : (day.shiftTypeId ?? "")}
+                        onChange={(event) => updateDay(index, event.target.value)}
+                      >
+                        <option value="__rest">Descanso</option>
+                        {(shifts ?? []).map((s) => (
+                          <option key={s._id} value={s._id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+
               {form.formState.errors.days ? (
                 <p className="text-destructive text-xs">
                   Revisa los días del patrón.
                 </p>
               ) : null}
+
               {(shifts ?? []).length === 0 ? (
-                <p className="text-muted-foreground text-xs">
-                  No tienes turnos todavía.{" "}
-                  <Link className="underline" href="/shifts">
+                <p className="text-muted-foreground text-xs pt-1">
+                  No tienes turnos creados aún.{" "}
+                  <Link className="text-primary underline font-medium" href="/shifts">
                     Crea un turno
                   </Link>{" "}
-                  antes de asignarlo a un patrón.
+                  para poder asignarlo.
                 </p>
               ) : null}
             </div>
 
             {error ? (
-              <p className="text-destructive text-sm" role="alert">
+              <p className="text-destructive text-xs" role="alert">
                 {error}
               </p>
             ) : null}
 
-            <div className="flex gap-2">
-              <Button type="submit" disabled={form.formState.isSubmitting}>
+            <div className="flex gap-2 pt-1">
+              <Button
+                type="submit"
+                size="sm"
+                className="flex-1 shadow-2xs"
+                disabled={form.formState.isSubmitting}
+              >
                 {editingId ? "Guardar cambios" : "Crear patrón"}
               </Button>
               {editingId ? (
-                <Button type="button" variant="ghost" onClick={resetForm}>
-                  Cancelar
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={resetForm}
+                >
+                  <X className="size-3.5" />
+                  <span>Cancelar</span>
                 </Button>
               ) : null}
             </div>
@@ -401,140 +481,204 @@ export function PatternsManager() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Tus patrones</h2>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/calendar">Ver calendario</Link>
+      {/* Catálogo de patrones activos y guardados */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-foreground">
+              Patrones configurados
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              Secuencias activadas para proyectar el calendario de turnos.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm" className="gap-1.5 shadow-2xs">
+            <Link href="/calendar">
+              <Calendar className="size-3.5" />
+              <span>Ver calendario</span>
+            </Link>
           </Button>
         </div>
-        {patterns === undefined ? (
-          <p className="text-muted-foreground text-sm">Cargando patrones…</p>
-        ) : patterns.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            Todavía no has creado ningún patrón.
-          </p>
-        ) : (
-          [...patterns]
-            .sort((left, right) =>
-              right.startDate.localeCompare(left.startDate),
-            )
-            .map((pattern) => {
-              const editable = pattern.startDate > today;
-              return (
-                <Card key={pattern._id}>
-                  <CardHeader>
-                    <CardTitle>{pattern.name}</CardTitle>
-                    <CardDescription>
-                      {pattern.type === "weekly"
-                        ? "Semanal"
-                        : `Rotativo de ${pattern.cycleLength} días`}{" "}
-                      · desde {pattern.startDate}
-                      {pattern.endDate ? ` hasta ${pattern.endDate}` : ""}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {pattern.days.map((day) => {
-                        const shift =
-                          day.shiftTypeId !== undefined
-                            ? shiftsById.get(day.shiftTypeId)
-                            : undefined;
-                        return (
-                          <span
-                            key={day.dayIndex}
-                            className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
-                            style={
-                              shift
-                                ? {
-                                    borderColor: shift.color,
-                                    backgroundColor: `${shift.color}1a`,
-                                  }
-                                : undefined
-                            }
-                          >
-                            <span className="text-muted-foreground">
-                              {pattern.type === "weekly"
-                                ? WEEKLY_DAY_LABELS[day.dayIndex]
-                                : `D${day.dayIndex + 1}`}
-                            </span>
-                            <span>{shift ? shift.name : "Descanso"}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
 
-                    {renamingId === pattern._id ? (
-                      <div className="flex gap-2">
-                        <Input
-                          aria-label="Nuevo nombre"
-                          value={renameValue}
-                          onChange={(event) =>
-                            setRenameValue(event.target.value)
-                          }
-                        />
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => void submitRename(pattern._id)}
-                          disabled={renameValue.trim().length === 0}
-                        >
-                          Guardar
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setRenamingId(null);
-                            setRenameValue("");
-                          }}
-                        >
-                          Cancelar
-                        </Button>
+        {patterns === undefined ? (
+          <div className="flex items-center gap-2 text-muted-foreground text-sm py-8">
+            <Clock className="size-4 animate-spin" />
+            <span>Cargando patrones…</span>
+          </div>
+        ) : patterns.length === 0 ? (
+          /* Estado vacío ilustrado */
+          <Card className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border-dashed">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3">
+              <RotateCw className="size-6" />
+            </div>
+            <CardTitle className="text-base font-semibold">
+              Todavía no has creado ningún patrón
+            </CardTitle>
+            <CardDescription className="max-w-xs text-xs mt-1">
+              Diseña un patrón semanal o rotativo con el formulario para empezar a proyectar tus turnos en el calendario.
+            </CardDescription>
+          </Card>
+        ) : (
+          /* Lista moderna de patrones */
+          <div className="flex flex-col gap-3">
+            {[...patterns]
+              .sort((left, right) =>
+                right.startDate.localeCompare(left.startDate),
+              )
+              .map((pattern) => {
+                const editable = pattern.startDate > today;
+                return (
+                  <Card
+                    key={pattern._id}
+                    className={cn(
+                      "border-border/80 overflow-hidden rounded-2xl shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs",
+                      editingId === pattern._id && "ring-2 ring-primary ring-offset-2"
+                    )}
+                  >
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <Layers className="size-3.5" />
+                          </div>
+                          <CardTitle className="text-base font-semibold">
+                            {pattern.name}
+                          </CardTitle>
+                        </div>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                          {pattern.type === "weekly"
+                            ? "Semanal (7d)"
+                            : `Rotativo (${pattern.cycleLength}d)`}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {editable ? (
+                      <CardDescription className="text-xs">
+                        Vigencia: desde <span className="font-medium text-foreground">{pattern.startDate}</span>
+                        {pattern.endDate ? (
+                          <> hasta <span className="font-medium text-foreground">{pattern.endDate}</span></>
+                        ) : " en adelante"}
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="p-4 pt-2 flex flex-col gap-3">
+                      {/* Tira cromática de días del patrón */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {pattern.days.map((day) => {
+                          const shift =
+                            day.shiftTypeId !== undefined
+                              ? shiftsById.get(day.shiftTypeId)
+                              : undefined;
+                          return (
+                            <span
+                              key={day.dayIndex}
+                              className="inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium shadow-2xs"
+                              style={
+                                shift
+                                  ? {
+                                      borderColor: shift.color,
+                                      backgroundColor: `${shift.color}15`,
+                                    }
+                                  : {
+                                      borderColor: "var(--border)",
+                                      backgroundColor: "var(--muted)",
+                                    }
+                              }
+                            >
+                              <span className="text-[10px] font-bold text-muted-foreground">
+                                {pattern.type === "weekly"
+                                  ? WEEKLY_DAY_LABELS[day.dayIndex]
+                                  : `D${day.dayIndex + 1}`}
+                              </span>
+                              <span className="font-semibold text-foreground">
+                                {shift ? shift.name : "Descanso"}
+                              </span>
+                            </span>
+                          );
+                        })}
+                      </div>
+
+                      {/* Renombrar o Acciones */}
+                      {renamingId === pattern._id ? (
+                        <div className="flex gap-2 pt-1 border-t border-border/60">
+                          <Input
+                            aria-label="Nuevo nombre"
+                            value={renameValue}
+                            className="h-8 text-xs"
+                            onChange={(event) =>
+                              setRenameValue(event.target.value)
+                            }
+                          />
                           <Button
                             type="button"
-                            variant="outline"
                             size="sm"
-                            onClick={() => startEditing(pattern)}
+                            className="h-8 gap-1 text-xs"
+                            onClick={() => void submitRename(pattern._id)}
+                            disabled={renameValue.trim().length === 0}
                           >
-                            Editar
+                            <Check className="size-3" />
+                            <span>Guardar</span>
                           </Button>
-                        ) : (
                           <Button
                             type="button"
-                            variant="outline"
                             size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs"
                             onClick={() => {
-                              setRenamingId(pattern._id);
-                              setRenameValue(pattern.name);
+                              setRenamingId(null);
+                              setRenameValue("");
                             }}
                           >
-                            Renombrar
+                            Cancelar
                           </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => void archive(pattern._id)}
-                        >
-                          Archivar
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-1.5 border-t border-border/60 pt-2">
+                          {editable ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 gap-1 px-2 text-xs"
+                              onClick={() => startEditing(pattern)}
+                            >
+                              <Pencil className="size-3" />
+                              <span>Editar</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 gap-1 px-2 text-xs"
+                              onClick={() => {
+                                setRenamingId(pattern._id);
+                                setRenameValue(pattern.name);
+                              }}
+                            >
+                              <Pencil className="size-3" />
+                              <span>Renombrar</span>
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
+                            onClick={() => void archive(pattern._id)}
+                          >
+                            <Archive className="size-3" />
+                            <span>Archivar</span>
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+          </div>
         )}
-        <p className="text-muted-foreground text-xs">
-          Para cambiar un patrón ya iniciado, archívalo y crea uno nuevo desde
-          la fecha deseada. Así el historial no cambia.
+
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          💡 Para modificar un patrón ya iniciado, archívalo y crea uno nuevo con la fecha deseada. De este modo tus turnos pasados quedan perfectamente intactos en el historial.
         </p>
       </div>
     </div>
