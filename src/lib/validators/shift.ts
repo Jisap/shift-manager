@@ -19,9 +19,7 @@ export const shiftTypeSchema = z.object({
     .trim()
     .min(1, "El nombre es obligatorio")
     .max(60, "Máximo 60 caracteres"),
-  color: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/, "Color hexadecimal no válido"),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color hexadecimal no válido"),
   description: z.string().trim().max(200, "Máximo 200 caracteres").optional(),
   intervals: z
     .array(shiftIntervalSchema)
@@ -32,6 +30,28 @@ export const shiftTypeSchema = z.object({
 });
 
 export type ShiftTypeInput = z.infer<typeof shiftTypeSchema>;
+
+/** Sufijo que se añade al nombre de un turno duplicado. */
+export const SHIFT_COPY_SUFFIX = " (copia)";
+
+/** Longitud máxima del nombre de un turno (igual que el schema Zod). */
+export const SHIFT_NAME_MAX_LENGTH = 60;
+
+/**
+ * Nombre del duplicado de un turno.
+ *
+ * Se recorta el nombre original si hace falta para que el sufijo quepa dentro
+ * del límite del schema. Un nombre vacío se sustituye por "Turno" para no
+ * generar un duplicado inválido.
+ */
+export function copyShiftName(
+  name: string,
+  maxLength: number = SHIFT_NAME_MAX_LENGTH,
+): string {
+  const available = Math.max(0, maxLength - SHIFT_COPY_SUFFIX.length);
+  const base = name.trim().slice(0, available).trimEnd();
+  return `${base || "Turno"}${SHIFT_COPY_SUFFIX}`;
+}
 
 export function minutesBetween(start: string, end: string): number {
   const [startHours, startMinutes] = start.split(":").map(Number);

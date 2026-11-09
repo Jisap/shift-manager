@@ -6,18 +6,18 @@ Sustituye calendarios improvisados y hojas de cálculo por una vista clara del h
 
 ## Estado
 
-**Fases 1–7 completadas; Fase 8 en curso.** Calendario, horas, estadísticas y exportación funcionando, con PWA instalable, Service Worker y página offline. CI preparado con GitHub Actions, pendiente de subir por permisos del token. Pendientes: optimización de rendimiento y E2E autenticados. La especificación está cerrada en `shiftManager.md` (v1.3).
+**Fases 1–7 completadas; Fase 8 y Fase 9 parcialmente completadas.** Calendario, horas, estadísticas y exportación funcionando, con PWA instalable, Service Worker y página offline. Autenticación completa (registro, sesión y recuperación por OTP), perfil con zona horaria, modo oscuro, vacaciones, festivos manuales y recordatorios. CI preparado con GitHub Actions, pendiente de subir por permisos del token. Pendientes: optimización de rendimiento, importación de festivos y algunos tests de backend. La especificación está cerrada en `shiftManager.md` (v1.7).
 
 ## Documentación
 
-| Documento | Contenido |
-| --- | --- |
-| [`shiftManager.md`](shiftManager.md) | Producto, alcance, stack y decisiones cerradas (fuente de verdad). |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Capas, flujo de datos y convenciones técnicas. |
-| [`DATABASE.md`](DATABASE.md) | Esquema de Convex, índices e invariantes. |
-| [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md) | Fases, tareas y criterios de aceptación. |
-| [`AGENTS.md`](AGENTS.md) | Reglas para agentes de IA y protocolo de sesión. |
-| [`docs/SESSION_LOG.md`](docs/SESSION_LOG.md) | Índice de sesiones de trabajo. |
+| Documento                                    | Contenido                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| [`shiftManager.md`](shiftManager.md)         | Producto, alcance, stack y decisiones cerradas (fuente de verdad). |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md)         | Capas, flujo de datos y convenciones técnicas.                     |
+| [`DATABASE.md`](DATABASE.md)                 | Esquema de Convex, índices e invariantes.                          |
+| [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md) | Fases, tareas y criterios de aceptación.                           |
+| [`AGENTS.md`](AGENTS.md)                     | Reglas para agentes de IA y protocolo de sesión.                   |
+| [`docs/SESSION_LOG.md`](docs/SESSION_LOG.md) | Índice de sesiones de trabajo.                                     |
 
 ## Stack
 
@@ -58,16 +58,16 @@ npm run dev
 
 Otros comandos:
 
-| Comando | Uso |
-| --- | --- |
-| `npm run build` | Build de producción. |
-| `npm run lint` | ESLint. |
-| `npm run typecheck` | TypeScript sin emitir. |
-| `npm run test` | Tests unitarios con Vitest. |
-| `npm run test:e2e` | Tests E2E con Playwright. |
-| `npm run format` | Formato con Prettier. |
+| Comando             | Uso                         |
+| ------------------- | --------------------------- |
+| `npm run build`     | Build de producción.        |
+| `npm run lint`      | ESLint.                     |
+| `npm run typecheck` | TypeScript sin emitir.      |
+| `npm run test`      | Tests unitarios con Vitest. |
+| `npm run test:e2e`  | Tests E2E con Playwright.   |
+| `npm run format`    | Formato con Prettier.       |
 
-Backend pendiente de inicializar con `npx convex dev` (requiere iniciar sesión en Convex).
+Backend desplegado en Convex. Para trabajar contra el deployment de desarrollo: `npx convex dev` (requiere iniciar sesión en Convex).
 
 ## Estructura prevista
 

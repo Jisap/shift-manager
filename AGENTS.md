@@ -51,7 +51,7 @@ Si la sesión se interrumpe, dejar el estado exacto y el comando para reproducir
 
 ## 3. Fuente de verdad
 
-- Producto, alcance y decisiones: `shiftManager.md` (versión actual 1.3).
+- Producto, alcance y decisiones: `shiftManager.md` (versión actual 1.7).
 - El registro de sesión documenta el trabajo, no las especificaciones.
 - Un cambio de arquitectura o de stack debe justificarse y actualizar `shiftManager.md`.
 

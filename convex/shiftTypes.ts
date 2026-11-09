@@ -1,5 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
+import { copyShiftName } from "../src/lib/validators/shift";
 import { mutation, query } from "./_generated/server";
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -199,6 +200,44 @@ export const archive = mutation({
     }
     await ctx.db.patch(args.id, {
       archivedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Duplica un turno del usuario autenticado con un sufijo "(copia)".
+ *
+ * Se copian intervalos, descansos y color; el nombre se recorta si es
+ * necesario para no superar el límite de 60 caracteres. No se duplican los
+ * metadatos de edición ni el estado de archivo.
+ */
+export const duplicate = mutation({
+  args: { id: v.id("shiftTypes") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new ConvexError({
+        code: "UNAUTHENTICATED",
+        message: "Debes iniciar sesión",
+      });
+    }
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.userId !== userId) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Turno no encontrado",
+      });
+    }
+    return await ctx.db.insert("shiftTypes", {
+      userId,
+      name: copyShiftName(existing.name),
+      color: existing.color,
+      description: existing.description,
+      intervals: existing.intervals,
+      breaks: existing.breaks,
+      breakMinutes: existing.breakMinutes,
+      breakPaid: existing.breakPaid,
       updatedAt: Date.now(),
     });
   },

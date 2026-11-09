@@ -30,8 +30,10 @@ export function ShiftTypesManager() {
   const createShift = useMutation(api.shiftTypes.create);
   const updateShift = useMutation(api.shiftTypes.update);
   const archiveShift = useMutation(api.shiftTypes.archive);
+  const duplicateShift = useMutation(api.shiftTypes.duplicate);
   const [editingId, setEditingId] = useState<Id<"shiftTypes"> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   const form = useForm<ShiftTypeInput>({
     resolver: zodResolver(shiftTypeSchema),
@@ -41,7 +43,7 @@ export function ShiftTypesManager() {
   const breaks = useFieldArray({ control: form.control, name: "breaks" });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Cargando…</p>;
+    return <p className="text-muted-foreground text-sm">Cargando…</p>;
   }
 
   if (!isAuthenticated) {
@@ -67,7 +69,9 @@ export function ShiftTypesManager() {
     const payload = {
       ...values,
       breakMinutes: totalBreakMinutes(values.breaks),
-      description: values.description?.trim() ? values.description.trim() : undefined,
+      description: values.description?.trim()
+        ? values.description.trim()
+        : undefined,
     };
     try {
       if (editingId) {
@@ -95,6 +99,26 @@ export function ShiftTypesManager() {
     });
   }
 
+  /** Duplica un turno en el backend y limpia cualquier error previo. */
+  async function duplicate(id: Id<"shiftTypes">) {
+    setListError(null);
+    try {
+      await duplicateShift({ id });
+    } catch {
+      setListError("No se pudo duplicar el turno.");
+    }
+  }
+
+  /** Archiva un turno y muestra un aviso si el backend lo rechaza. */
+  async function archive(id: Id<"shiftTypes">) {
+    setListError(null);
+    try {
+      await archiveShift({ id });
+    } catch {
+      setListError("No se pudo archivar el turno.");
+    }
+  }
+
   return (
     <div className="grid w-full gap-8 lg:grid-cols-[22rem_1fr]">
       <Card>
@@ -113,7 +137,7 @@ export function ShiftTypesManager() {
               <Label htmlFor="name">Nombre</Label>
               <Input id="name" {...form.register("name")} />
               {form.formState.errors.name ? (
-                <p className="text-xs text-destructive">
+                <p className="text-destructive text-xs">
                   {form.formState.errors.name.message}
                 </p>
               ) : null}
@@ -142,7 +166,9 @@ export function ShiftTypesManager() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => intervals.append({ start: "08:00", end: "16:00" })}
+                  onClick={() =>
+                    intervals.append({ start: "08:00", end: "16:00" })
+                  }
                   disabled={intervals.fields.length >= 4}
                 >
                   Añadir
@@ -180,14 +206,16 @@ export function ShiftTypesManager() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => breaks.append({ start: "13:00", end: "14:00" })}
+                  onClick={() =>
+                    breaks.append({ start: "13:00", end: "14:00" })
+                  }
                   disabled={breaks.fields.length >= 3}
                 >
                   Añadir descanso
                 </Button>
               </div>
               {breaks.fields.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sin descansos.</p>
+                <p className="text-muted-foreground text-xs">Sin descansos.</p>
               ) : null}
               {breaks.fields.map((field, index) => (
                 <div key={field.id} className="flex items-center gap-2">
@@ -218,7 +246,7 @@ export function ShiftTypesManager() {
             </div>
 
             {error ? (
-              <p className="text-sm text-destructive" role="alert">
+              <p className="text-destructive text-sm" role="alert">
                 {error}
               </p>
             ) : null}
@@ -247,10 +275,15 @@ export function ShiftTypesManager() {
 
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Tus turnos</h2>
+        {listError ? (
+          <p className="text-destructive text-sm" role="alert">
+            {listError}
+          </p>
+        ) : null}
         {shifts === undefined ? (
-          <p className="text-sm text-muted-foreground">Cargando turnos…</p>
+          <p className="text-muted-foreground text-sm">Cargando turnos…</p>
         ) : shifts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Todavía no has creado ningún turno.
           </p>
         ) : (
@@ -275,7 +308,7 @@ export function ShiftTypesManager() {
                     .map((interval) => `${interval.start}–${interval.end}`)
                     .join(" · ")}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   {shift.breaks && shift.breaks.length > 0
                     ? `Descansos: ${shift.breaks
                         .map((rest) => `${rest.start}–${rest.end}`)
@@ -285,7 +318,7 @@ export function ShiftTypesManager() {
                     ? " · remunerado"
                     : ""}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -296,9 +329,17 @@ export function ShiftTypesManager() {
                   </Button>
                   <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void duplicate(shift._id)}
+                  >
+                    Duplicar
+                  </Button>
+                  <Button
+                    type="button"
                     variant="destructive"
                     size="sm"
-                    onClick={() => void archiveShift({ id: shift._id })}
+                    onClick={() => void archive(shift._id)}
                   >
                     Archivar
                   </Button>

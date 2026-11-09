@@ -1,6 +1,6 @@
 # Plan de desarrollo — ShiftManager
 
-Fases ejecutables derivadas de `shiftManager.md` (v1.6). Cada fase termina con verificación y registro de sesión.
+Fases ejecutables derivadas de `shiftManager.md` (v1.7). Cada fase termina con verificación y registro de sesión.
 
 ## Fase 0 — Documentación y decisiones
 
@@ -34,11 +34,12 @@ Aceptación:
 
 ## Fase 2 — Tipos de turno
 
-- [x] CRUD de `shiftTypes` (crear, editar y archivar). Duplicar pendiente.
+- [x] CRUD de `shiftTypes` (crear, editar, archivar y duplicar).
 - [x] Formulario con React Hook Form + Zod.
 - [x] Soporte de intervalos múltiples, pausas y colores.
 - [x] Validación en Convex y aislamiento por usuario.
-- [ ] Tests unitarios de validadores y E2E del CRUD versionados (smoke manual ya verificado).
+- [x] E2E versionado de alta y duplicado (`e2e/shifts.spec.ts`).
+- [ ] Tests unitarios del schema de turnos y E2E de edición/archivo.
 
 Aceptación: el usuario gestiona sus turnos, incluidos nocturnos y partidos.
 
@@ -108,7 +109,13 @@ Aceptación: instalable y sin fugas de datos por caché.
 
 ## Fase 9 — Mejoras posteriores
 
-Vacaciones, festivos importados, recordatorios y mejoras de estadísticas.
+- [x] Vacaciones: saldo anual y registro de días.
+- [x] Festivos manuales en el calendario.
+- [x] Recordatorios de turno en cliente.
+- [x] Perfil, zona horaria y recuperación de contraseña por OTP.
+- [x] Modo oscuro con `next-themes`.
+- [ ] Importación de calendarios de festivos.
+- [ ] Verificación de email en el registro (opcional, fuera del MVP).
 
 ## Puertas de calidad
 
