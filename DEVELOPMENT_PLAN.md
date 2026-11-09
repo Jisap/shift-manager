@@ -38,8 +38,8 @@ Aceptación:
 - [x] Formulario con React Hook Form + Zod.
 - [x] Soporte de intervalos múltiples, pausas y colores.
 - [x] Validación en Convex y aislamiento por usuario.
-- [x] E2E versionado de alta y duplicado (`e2e/shifts.spec.ts`).
-- [ ] Tests unitarios del schema de turnos y E2E de edición/archivo.
+- [x] E2E versionado de alta, duplicado, edición y archivo (`e2e/shifts.spec.ts`).
+- [x] Tests unitarios del schema de turnos y de `totalBreakMinutes`.
 
 Aceptación: el usuario gestiona sus turnos, incluidos nocturnos y partidos.
 
@@ -50,7 +50,7 @@ Aceptación: el usuario gestiona sus turnos, incluidos nocturnos y partidos.
 - [x] Implementar `src/lib/engine` con el contrato de `shiftManager.md` §5.21.
 - [x] `resolveDay` y `resolveRange` con zona horaria y DST.
 - [x] Cambio de patrón sin reescribir historial (archivar + crear nuevo).
-- [ ] Tests de los 24 casos de §12.1 (23 en el motor; caso 19 implementado en backend sin test automatizado).
+- [x] Tests de los 24 casos de §12.1 (23 en el motor; caso 19 cubierto por un test de backend con `convex-test`).
 
 Aceptación: dado un patrón y un rango, el motor resuelve todas las jornadas correctamente.
 
