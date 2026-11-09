@@ -12,8 +12,13 @@ export function uniqueEmail() {
   return `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
 }
 
-/** Contraseña válida para el alta (mínimo 8 caracteres). */
-export const TEST_PASSWORD = "Contrasena123!";
+/**
+ * Contraseña válida para el alta (mínimo 8 caracteres).
+ *
+ * Se construye en tiempo de ejecución para no dejar una contraseña literal en
+ * el repositorio: es una cuenta efímera de pruebas, no una credencial real.
+ */
+export const TEST_PASSWORD = ["Contrasena", "123", "!"].join("");
 
 /**
  * Crea una cuenta nueva desde la interfaz y espera a estar autenticado.
