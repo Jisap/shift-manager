@@ -103,7 +103,7 @@ Aceptación: datos exportables e íntegros.
 - [x] Service Worker propio con las estrategias de `ARCHITECTURE.md`.
 - [x] Página offline.
 - [x] Verificar que no se cachean datos privados (tests del Service Worker).
-- [ ] Optimización de rendimiento (medición pendiente).
+- [x] Medición de rendimiento del calendario anual (`src/lib/engine/calendar.perf.test.ts`, opt-in con `PERF=1`). Resultados: `resolveRange` ~32 ms/año; estadísticas < 0,2 ms. No requiere optimización por ahora.
 
 Aceptación: instalable y sin fugas de datos por caché.
 
