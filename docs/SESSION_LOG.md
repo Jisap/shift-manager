@@ -28,6 +28,7 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-08 17:59 | Antigravity (Gemini 3.8 Flash) | Implementación de Modo Oscuro con next-themes y botón ThemeToggle     | [sessions/2026-11-08-1759-antigravity.md](sessions/2026-11-08-1759-antigravity.md) |
 | 2026-11-09 17:34 | Antigravity (Gemini 3.8 Flash) | Rediseño de ShiftTypesManager (paleta de color, grid de turnos, UI)  | [sessions/2026-11-09-1734-antigravity.md](sessions/2026-11-09-1734-antigravity.md) |
 | 2026-11-09 18:03 | Antigravity (Gemini 3.8 Flash) | Rediseño de PatternsManager (previsualización cromática, UI, catálogo)| [sessions/2026-11-09-1803-antigravity.md](sessions/2026-11-09-1803-antigravity.md) |
+| 2026-11-09 18:12 | Antigravity (Gemini 3.8 Flash) | Optimización móvil de ShiftTypesManager y PatternsManager (orden/UI) | [sessions/2026-11-09-1812-antigravity.md](sessions/2026-11-09-1812-antigravity.md) |
 | 2026-11-06 13:40 | opencode (deepseek-v4.1-flash-free) | Pulido visual del Dashboard: tarjetas de métricas, próximos turnos y gráfico | [sessions/2026-11-06-1340-opencode.md](sessions/2026-11-06-1340-opencode.md) |
 | 2026-11-06 13:46 | opencode (deepseek-v4.1-flash-free) | Validación PWA sobre build de producción: manifest, SW, offline e iconos | [sessions/2026-11-06-1346-opencode.md](sessions/2026-11-06-1346-opencode.md) |
 | 2026-11-06 13:49 | opencode (deepseek-v4.1-flash-free) | Fase 9: indicadores de rendimiento del periodo en el Dashboard (97 tests) | [sessions/2026-11-06-1349-opencode.md](sessions/2026-11-06-1349-opencode.md) |

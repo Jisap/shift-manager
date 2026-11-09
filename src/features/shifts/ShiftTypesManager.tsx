@@ -128,6 +128,10 @@ export function ShiftTypesManager() {
       breaks: shift.breaks ?? [],
       breakPaid: shift.breakPaid,
     });
+    // En móviles hacemos scroll suave hacia el formulario para editar
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      document.getElementById("shift-form-card")?.scrollIntoView({ behavior: "smooth" });
+    }
   }
 
   async function duplicate(id: Id<"shiftTypes">) {
@@ -149,9 +153,12 @@ export function ShiftTypesManager() {
   }
 
   return (
-    <div className="grid w-full items-start gap-8 lg:grid-cols-[24rem_1fr]">
+    <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[24rem_1fr] lg:items-start">
       {/* Formulario de creación / edición */}
-      <Card className="border-border/80 sticky top-20 rounded-2xl shadow-2xs overflow-hidden">
+      <Card
+        id="shift-form-card"
+        className="border-border/80 rounded-2xl shadow-2xs overflow-hidden lg:sticky lg:top-20 order-2 lg:order-1"
+      >
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2.5">
             <div
@@ -425,7 +432,7 @@ export function ShiftTypesManager() {
       </Card>
 
       {/* Listado de turnos creados */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 order-1 lg:order-2">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold tracking-tight text-foreground">
@@ -435,11 +442,24 @@ export function ShiftTypesManager() {
               Turnos disponibles para componer tus patrones y calendarios.
             </p>
           </div>
-          {shifts && shifts.length > 0 ? (
-            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-              {shifts.length} {shifts.length === 1 ? "turno" : "turnos"}
-            </span>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {shifts && shifts.length > 0 ? (
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                {shifts.length} {shifts.length === 1 ? "turno" : "turnos"}
+              </span>
+            ) : null}
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="lg:hidden h-8 text-xs gap-1"
+            >
+              <a href="#shift-form-card">
+                <Plus className="size-3.5" />
+                <span>Nuevo</span>
+              </a>
+            </Button>
+          </div>
         </div>
 
         {listError ? (

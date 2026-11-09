@@ -193,6 +193,10 @@ export function PatternsManager() {
         shiftTypeId: day.shiftTypeId,
       })),
     });
+    // En móviles hacemos scroll suave hacia el formulario para editar
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      document.getElementById("pattern-form-card")?.scrollIntoView({ behavior: "smooth" });
+    }
   }
 
   async function submitRename(id: Id<"shiftPatterns">) {
@@ -219,9 +223,12 @@ export function PatternsManager() {
   }
 
   return (
-    <div className="grid w-full items-start gap-8 lg:grid-cols-[25rem_1fr]">
+    <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[25rem_1fr] lg:items-start">
       {/* Formulario lateral de configuración */}
-      <Card className="border-border/80 sticky top-20 rounded-2xl shadow-2xs overflow-hidden">
+      <Card
+        id="pattern-form-card"
+        className="border-border/80 rounded-2xl shadow-2xs overflow-hidden lg:sticky lg:top-20 order-2 lg:order-1"
+      >
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary shadow-xs">
@@ -482,7 +489,7 @@ export function PatternsManager() {
       </Card>
 
       {/* Catálogo de patrones activos y guardados */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 order-1 lg:order-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-bold tracking-tight text-foreground">
@@ -492,12 +499,25 @@ export function PatternsManager() {
               Secuencias activadas para proyectar el calendario de turnos.
             </p>
           </div>
-          <Button asChild variant="outline" size="sm" className="gap-1.5 shadow-2xs">
-            <Link href="/calendar">
-              <Calendar className="size-3.5" />
-              <span>Ver calendario</span>
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="lg:hidden h-8 text-xs gap-1"
+            >
+              <a href="#pattern-form-card">
+                <RotateCw className="size-3.5" />
+                <span>Nuevo</span>
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="gap-1.5 shadow-2xs">
+              <Link href="/calendar">
+                <Calendar className="size-3.5" />
+                <span>Ver calendario</span>
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {patterns === undefined ? (
