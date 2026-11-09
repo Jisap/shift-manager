@@ -19,7 +19,7 @@
  * grupos de controles están etiquetados.
  */
 
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   addDays,
   addMonths,
@@ -35,13 +35,14 @@ import {
   startOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { ApplyPatternDialog } from "../patterns/ApplyPatternDialog";
+import { DayActionMenu } from "./DayActionMenu";
 import {
   Card,
   CardContent,
@@ -256,6 +257,60 @@ export function CalendarView() {
   // Estado del diálogo para aplicar patrón a la semana
   const [patternToApply, setPatternToApply] = useState<Doc<"shiftPatterns"> | null>(null);
   const [showPatternSelector, setShowPatternSelector] = useState(false);
+  const [isClearingWeek, setIsClearingWeek] = useState(false);
+  const [isSettingWeekRest, setIsSettingWeekRest] = useState(false);
+
+  const clearRangeOverridesMutation = useMutation(api.overrides.clearRangeOverrides);
+  const setRangeRestMutation = useMutation(api.overrides.setRangeRest);
+
+  // Comprueba si en la semana o periodo actual hay alguna excepción
+  const hasOverridesInPeriod = useMemo(() => {
+    return (overrides ?? []).some(
+      (o) => o.date >= periodStartKey && o.date <= periodEndKey,
+    );
+  }, [overrides, periodStartKey, periodEndKey]);
+
+  // Comprueba si la semana actual tiene turnos planificados
+  const hasShiftsInPeriod = useMemo(() => {
+    return (calendar?.days ?? []).some(
+      (day) =>
+        day.date >= periodStartKey &&
+        day.date <= periodEndKey &&
+        day.kind === "shift",
+    );
+  }, [calendar, periodStartKey, periodEndKey]);
+
+  // Pone todos los días de la semana visible en descanso
+  const handleSetWeekRest = async () => {
+    if (!window.confirm("¿Poner toda esta semana en descanso? (Se limpiarán los turnos de estos 7 días)")) {
+      return;
+    }
+    setIsSettingWeekRest(true);
+    try {
+      await setRangeRestMutation({
+        startDate: periodStartKey,
+        endDate: periodEndKey,
+      });
+    } finally {
+      setIsSettingWeekRest(false);
+    }
+  };
+
+  // Restaura la semana al patrón eliminando excepciones
+  const handleClearWeekOverrides = async () => {
+    if (!window.confirm("¿Restaurar los turnos de esta semana eliminando sus modificaciones?")) {
+      return;
+    }
+    setIsClearingWeek(true);
+    try {
+      await clearRangeOverridesMutation({
+        startDate: periodStartKey,
+        endDate: periodEndKey,
+      });
+    } finally {
+      setIsClearingWeek(false);
+    }
+  };
 
   // --------------------------------------------------------------------------
   // Datos del día seleccionado (se pasan a los editores)
@@ -421,7 +476,7 @@ export function CalendarView() {
 
           {/* Botón rápido para aplicar un patrón como turnos de esta semana */}
           {patterns && patterns.length > 0 ? (
-            <div className="relative">
+            <div className="relative flex items-center gap-1.5">
               <Button
                 type="button"
                 variant="outline"
@@ -434,6 +489,42 @@ export function CalendarView() {
                 <span className="hidden xs:inline">Aplicar patrón</span>
                 <span className="xs:hidden">Patrón</span>
               </Button>
+
+              {/* En vista Semana: botón para poner la semana en descanso si hay turnos */}
+              {view === "week" && hasShiftsInPeriod ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isSettingWeekRest || isClearingWeek}
+                  className="gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={handleSetWeekRest}
+                  title="Establece los 7 días de esta semana como descanso"
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span className="hidden sm:inline">
+                    {isSettingWeekRest ? "Vaciando..." : "Semana en descanso"}
+                  </span>
+                </Button>
+              ) : null}
+
+              {/* Si estamos en vista Semana y hay excepciones aplicadas, botón para restaurar */}
+              {view === "week" && hasOverridesInPeriod ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isClearingWeek || isSettingWeekRest}
+                  className="gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={handleClearWeekOverrides}
+                  title="Elimina las excepciones aplicadas a los 7 días de esta semana y restaura el patrón"
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span className="hidden sm:inline">
+                    {isClearingWeek ? "Restaurando..." : "Restaurar semana"}
+                  </span>
+                </Button>
+              ) : null}
 
               {showPatternSelector ? (
                 <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-in fade-in-0 duration-150">
@@ -792,17 +883,24 @@ export function CalendarView() {
             }${vacationDates.has(dateKey) ? ", vacaciones" : ""}`;
 
             return (
-              <button
+              <div
                 key={dateKey}
-                type="button"
+                role="button"
+                tabIndex={0}
                 aria-pressed={selectedDate === dateKey}
                 aria-current={dateKey === todayKey ? "date" : undefined}
                 aria-label={accessibleLabel}
                 onClick={() => setSelectedDate(dateKey)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedDate(dateKey);
+                  }
+                }}
                 className={cn(
                   // Base compacta para móvil (`min-h-20`, `p-1.5`) que se
                   // amplía desde `sm`.
-                  "group relative flex min-h-20 flex-col gap-1 rounded-xl border p-2 text-left transition-all duration-150 focus-visible:ring-3 focus-visible:outline-none sm:min-h-28 sm:p-2.5",
+                  "group relative flex min-h-20 flex-col gap-1 rounded-xl border p-2 text-left cursor-pointer transition-all duration-150 focus-visible:ring-3 focus-visible:outline-none sm:min-h-28 sm:p-2.5",
                   // La vista semanal da más altura a cada día; la diaria, aún más.
                   view === "week" && "min-h-40 p-2 sm:min-h-56 sm:p-3",
                   view === "day" && "min-h-72 p-4",
@@ -824,7 +922,7 @@ export function CalendarView() {
                     : undefined
                 }
               >
-                {/* Número del día */}
+                {/* Número del día + Menú de acciones rápidas */}
                 <span className="flex items-center justify-between">
                   <span
                     className={cn(
@@ -836,6 +934,21 @@ export function CalendarView() {
                   >
                     {format(day, "d")}
                   </span>
+
+                  {/* Menú de acciones rápidas (3 puntos): visible en hover en desktop, o siempre en vista semana/día */}
+                  <DayActionMenu
+                    date={dateKey}
+                    hasOverride={overridesByDate.has(dateKey)}
+                    overrideId={overridesByDate.get(dateKey)?._id}
+                    shifts={shifts ?? []}
+                    onOpenEditor={() => setSelectedDate(dateKey)}
+                    className={cn(
+                      "transition-opacity duration-150",
+                      view === "month"
+                        ? "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+                        : "opacity-80 hover:opacity-100"
+                    )}
+                  />
                 </span>
 
                 {/* Día de vacaciones registrado (indicador de solo lectura) */}
@@ -922,7 +1035,7 @@ export function CalendarView() {
                     {overridesByDate.get(dateKey)?.notes}
                   </span>
                 ) : null}
-              </button>
+              </div>
             );
           })}
         </div>

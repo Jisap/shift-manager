@@ -61,3 +61,9 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-09 16:41 | opencode (deepseek-v4.1-flash-free) | Verificación visual del modo oscuro y «Duplicar turno» con tests | [sessions/2026-11-09-1641-opencode.md](sessions/2026-11-09-1641-opencode.md) |
 | 2026-11-09 19:10 | Antigravity (Gemini 3.8 Flash) | Aplicar patrón a fecha/semana como excepciones (mutación + modal + UI)| [sessions/2026-11-09-1910-antigravity.md](sessions/2026-11-09-1910-antigravity.md) |
 | 2026-11-09 19:19 | Antigravity (Gemini 3.8 Flash) | Retirada de la etiqueta «Cambio» en celdas y agenda del calendario   | [sessions/2026-11-09-1919-antigravity.md](sessions/2026-11-09-1919-antigravity.md) |
+| 2026-11-09 19:40 | Antigravity (Gemini 3.8 Flash) | Mutación y botón de reset de calendario (limpia excepciones y pruebas)| [sessions/2026-11-09-1940-antigravity.md](sessions/2026-11-09-1940-antigravity.md) |
+| 2026-11-09 19:46 | Antigravity (Gemini 3.8 Flash) | Retirada de botón de reset global en favor de gestión granular segura | [sessions/2026-11-09-1946-antigravity.md](sessions/2026-11-09-1946-antigravity.md) |
+| 2026-11-09 19:48 | Antigravity (Gemini 3.8 Flash) | Mutación y botón «Limpiar semana» para eliminar excepciones acotadas  | [sessions/2026-11-09-1948-antigravity.md](sessions/2026-11-09-1948-antigravity.md) |
+| 2026-11-09 19:59 | Antigravity (Gemini 3.8 Flash) | Borrado y descanso granular para días individuales y semanas completas | [sessions/2026-11-09-1959-antigravity.md](sessions/2026-11-09-1959-antigravity.md) |
+| 2026-11-09 20:12 | Antigravity (Gemini 3.8 Flash) | Menú rápido de 3 puntos (dropdown) en celdas de calendario          | [sessions/2026-11-09-2012-antigravity.md](sessions/2026-11-09-2012-antigravity.md) |
+| 2026-11-09 20:15 | Antigravity (Gemini 3.8 Flash) | Corrección de anidamiento button/button e hidratación en celdas     | [sessions/2026-11-09-2015-antigravity.md](sessions/2026-11-09-2015-antigravity.md) |

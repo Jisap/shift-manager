@@ -415,3 +415,175 @@ export const applyPatternToDate = mutation({
     return { success: true, count: patternDays.length };
   },
 });
+
+/**
+ * Elimina las excepciones (scheduleOverrides) en un rango específico de fechas
+ * (por ejemplo, los 7 días de una semana concreta).
+ */
+export const clearRangeOverrides = mutation({
+  args: {
+    startDate: v.string(),
+    endDate: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    validateRange(args.startDate, args.endDate);
+
+    const overrides = await ctx.db
+      .query("scheduleOverrides")
+      .withIndex("by_user_date", (q) =>
+        q
+          .eq("userId", userId)
+          .gte("date", args.startDate)
+          .lte("date", args.endDate),
+      )
+      .collect();
+
+    for (const item of overrides) {
+      await ctx.db.delete(item._id);
+    }
+
+    return {
+      success: true,
+      clearedCount: overrides.length,
+    };
+  },
+});
+
+/**
+ * Establece descanso (rest) para todos los días en un rango específico de fechas
+ * (por ejemplo, para vaciar o poner en descanso una semana completa sin importar su patrón).
+ */
+export const setRangeRest = mutation({
+  args: {
+    startDate: v.string(),
+    endDate: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    validateRange(args.startDate, args.endDate);
+
+    const count = daysBetweenLocal(args.startDate, args.endDate) + 1;
+    const now = Date.now();
+
+    for (let i = 0; i < count; i++) {
+      const dayDate = addLocalDays(args.startDate, i);
+
+      const existing = await ctx.db
+        .query("scheduleOverrides")
+        .withIndex("by_user_date", (q) =>
+          q.eq("userId", userId).eq("date", dayDate),
+        )
+        .unique();
+
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          kind: "rest",
+          shiftTypeId: undefined,
+          intervals: undefined,
+          updatedAt: now,
+        });
+      } else {
+        await ctx.db.insert("scheduleOverrides", {
+          userId,
+          date: dayDate,
+          kind: "rest",
+          updatedAt: now,
+        });
+      }
+    }
+
+    return { success: true, count };
+  },
+});
+
+/**
+ * Crea o actualiza una excepción para una fecha específica (upsert).
+ * Si ya existe, actualiza sus campos; si no existe, la crea.
+ */
+export const setDayShift = mutation({
+  args: {
+    date: v.string(),
+    shiftTypeId: v.id("shiftTypes"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    if (!isValidLocalDate(args.date)) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "La fecha no es válida",
+      });
+    }
+
+    const shift = await validateShift(ctx, userId, args.shiftTypeId);
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("scheduleOverrides")
+      .withIndex("by_user_date", (q) =>
+        q.eq("userId", userId).eq("date", args.date),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        kind: "shift",
+        shiftTypeId: shift,
+        intervals: undefined,
+        updatedAt: now,
+      });
+      return existing._id;
+    } else {
+      return await ctx.db.insert("scheduleOverrides", {
+        userId,
+        date: args.date,
+        kind: "shift",
+        shiftTypeId: shift,
+        updatedAt: now,
+      });
+    }
+  },
+});
+/**
+ * Pone un día concreto en descanso (rest) con un solo clic.
+ */
+export const setDayRest = mutation({
+  args: {
+    date: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    if (!isValidLocalDate(args.date)) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "La fecha no es válida",
+      });
+    }
+
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("scheduleOverrides")
+      .withIndex("by_user_date", (q) =>
+        q.eq("userId", userId).eq("date", args.date),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        kind: "rest",
+        shiftTypeId: undefined,
+        intervals: undefined,
+        updatedAt: now,
+      });
+      return { id: existing._id, action: "updated" };
+    } else {
+      const id = await ctx.db.insert("scheduleOverrides", {
+        userId,
+        date: args.date,
+        kind: "rest",
+        updatedAt: now,
+      });
+      return { id, action: "created" };
+    }
+  },
+});

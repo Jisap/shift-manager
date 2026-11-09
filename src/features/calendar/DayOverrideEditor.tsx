@@ -72,8 +72,10 @@ export function DayOverrideEditor({
   const createOverride = useMutation(api.overrides.create);
   const updateOverride = useMutation(api.overrides.update);
   const removeOverride = useMutation(api.overrides.remove);
+  const setDayRest = useMutation(api.overrides.setDayRest);
   // Mensaje de error del backend (null si no hay ninguno).
   const [error, setError] = useState<string | null>(null);
+  const [isResting, setIsResting] = useState(false);
 
   // Formulario con validación Zod. Si ya existe una excepción se pre-rellena
   // con sus valores; si no, se usan los valores por defecto.
@@ -119,6 +121,24 @@ export function DayOverrideEditor({
       setError(
         convexErrorMessage(caught, "No se pudo guardar la excepción."),
       );
+    }
+  }
+
+  /**
+   * Pone directamente este día en Descanso (rest) con un solo clic.
+   */
+  async function handleSetRest() {
+    setError(null);
+    setIsResting(true);
+    try {
+      await setDayRest({ date });
+      onClose();
+    } catch (caught) {
+      setError(
+        convexErrorMessage(caught, "No se pudo poner el día en descanso."),
+      );
+    } finally {
+      setIsResting(false);
     }
   }
 
@@ -238,21 +258,34 @@ export function DayOverrideEditor({
             </p>
           ) : null}
 
-          {/* Acciones: guardar (deshabilitado mientras se envía), quitar
-              (solo si ya existe la excepción) y cancelar */}
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              Guardar excepción
+          {/* Acciones: guardar, descanso rápido, quitar excepción y cancelar */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button type="submit" disabled={form.formState.isSubmitting || isResting}>
+              Guardar turno
             </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={form.formState.isSubmitting || isResting}
+              onClick={handleSetRest}
+              title="Establece este día como descanso eliminando cualquier turno planificado"
+            >
+              {isResting ? "Marcando descanso..." : "Poner en descanso"}
+            </Button>
+
             {existing ? (
               <Button
                 type="button"
                 variant="destructive"
+                disabled={form.formState.isSubmitting || isResting}
                 onClick={() => void remove()}
+                title="Elimina cualquier excepción de este día y restaura el cálculo de tu patrón"
               >
-                Quitar excepción
+                Restaurar al patrón
               </Button>
             ) : null}
+
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
