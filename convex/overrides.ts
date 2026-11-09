@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
+  addLocalDays,
   daysBetweenLocal,
   isValidLocalDate,
   isValidLocalTime,
@@ -310,5 +311,107 @@ export const remove = mutation({
       });
     }
     await ctx.db.delete(existing._id);
+  },
+});
+
+/**
+ * Aplica los turnos de un patrón a partir de una fecha objetivo creando o actualizando
+ * excepciones (scheduleOverrides) para cada uno de los días del patrón.
+ */
+export const applyPatternToDate = mutation({
+  args: {
+    patternId: v.id("shiftPatterns"),
+    targetStartDate: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+
+    if (!isValidLocalDate(args.targetStartDate)) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "La fecha inicial no es válida",
+      });
+    }
+
+    const pattern = await ctx.db.get(args.patternId);
+    if (pattern === null || pattern.userId !== userId) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Patrón no encontrado",
+      });
+    }
+
+    // Obtenemos los días configurados del patrón ordenados por dayIndex
+    const patternDays = await ctx.db
+      .query("patternDays")
+      .withIndex("by_pattern_day", (q) => q.eq("patternId", pattern._id))
+      .collect();
+
+    if (patternDays.length === 0) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "El patrón no tiene días configurados",
+      });
+    }
+
+    patternDays.sort((a, b) => a.dayIndex - b.dayIndex);
+
+    // Para cada día del ciclo, calculamos la fecha e insertamos o actualizamos el override
+    const now = Date.now();
+    for (const pDay of patternDays) {
+      const dayDate = addLocalDays(args.targetStartDate, pDay.dayIndex);
+
+      // Verificamos si ya existe un override para esa fecha
+      const existing = await ctx.db
+        .query("scheduleOverrides")
+        .withIndex("by_user_date", (q) =>
+          q.eq("userId", userId).eq("date", dayDate),
+        )
+        .unique();
+
+      if (pDay.isRestDay || !pDay.shiftTypeId) {
+        // Es día de descanso
+        if (existing) {
+          await ctx.db.patch(existing._id, {
+            kind: "rest",
+            shiftTypeId: undefined,
+            intervals: undefined,
+            updatedAt: now,
+          });
+        } else {
+          await ctx.db.insert("scheduleOverrides", {
+            userId,
+            date: dayDate,
+            kind: "rest",
+            updatedAt: now,
+          });
+        }
+      } else {
+        // Es día de turno con shiftTypeId
+        const shift = await ctx.db.get(pDay.shiftTypeId);
+        if (!shift || shift.userId !== userId) {
+          continue;
+        }
+
+        if (existing) {
+          await ctx.db.patch(existing._id, {
+            kind: "shift",
+            shiftTypeId: shift._id,
+            intervals: undefined,
+            updatedAt: now,
+          });
+        } else {
+          await ctx.db.insert("scheduleOverrides", {
+            userId,
+            date: dayDate,
+            kind: "shift",
+            shiftTypeId: shift._id,
+            updatedAt: now,
+          });
+        }
+      }
+    }
+
+    return { success: true, count: patternDays.length };
   },
 });

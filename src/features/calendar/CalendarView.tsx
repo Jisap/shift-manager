@@ -35,11 +35,13 @@ import {
   startOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import type { Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { ApplyPatternDialog } from "../patterns/ApplyPatternDialog";
 import {
   Card,
   CardContent,
@@ -187,6 +189,7 @@ export function CalendarView() {
     isAuthenticated ? { startDate, endDate } : "skip",
   );
   // Tipos de turno del usuario (nombre y color).
+  const patterns = useQuery(api.patterns.list, isAuthenticated ? {} : "skip");
   const shifts = useQuery(api.shiftTypes.list, isAuthenticated ? {} : "skip");
   // `overrides` se carga en paralelo al calendario para poder leer notas
   // y el estado de excepción activa sin esperar a que el motor las resuelva.
@@ -249,6 +252,10 @@ export function CalendarView() {
     () => new Set((vacations ?? []).map((vacation) => vacation.date)),
     [vacations],
   );
+
+  // Estado del diálogo para aplicar patrón a la semana
+  const [patternToApply, setPatternToApply] = useState<Doc<"shiftPatterns"> | null>(null);
+  const [showPatternSelector, setShowPatternSelector] = useState(false);
 
   // --------------------------------------------------------------------------
   // Datos del día seleccionado (se pasan a los editores)
@@ -411,6 +418,50 @@ export function CalendarView() {
               Agenda
             </Button>
           </div>
+
+          {/* Botón rápido para aplicar un patrón como turnos de esta semana */}
+          {patterns && patterns.length > 0 ? (
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs font-medium border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+                onClick={() => setShowPatternSelector(!showPatternSelector)}
+                title="Aplica una secuencia de turnos de tus patrones a esta semana"
+              >
+                <Sparkles className="size-3.5" />
+                <span className="hidden xs:inline">Aplicar patrón</span>
+                <span className="xs:hidden">Patrón</span>
+              </Button>
+
+              {showPatternSelector ? (
+                <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-in fade-in-0 duration-150">
+                  <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground border-b border-border/50 mb-1">
+                    Selecciona patrón a aplicar:
+                  </div>
+                  <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                    {patterns.map((p) => (
+                      <button
+                        key={p._id}
+                        type="button"
+                        onClick={() => {
+                          setPatternToApply(p);
+                          setShowPatternSelector(false);
+                        }}
+                        className="flex items-center justify-between w-full px-2 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary text-left transition-colors"
+                      >
+                        <span className="truncate font-medium">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1 shrink-0">
+                          {p.cycleLength}d
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {/* Navegación: periodo anterior / título / periodo siguiente / hoy /
               año. Con `flex-wrap` los controles bajan de línea en pantallas
               estrechas. */}
@@ -652,11 +703,6 @@ export function CalendarView() {
                             />
                           ) : null}
                           {shift?.name ?? "Turno"}
-                          {resolved.source === "override" ? (
-                            <span className="bg-foreground/10 rounded px-1 text-[10px] uppercase">
-                              Cambio
-                            </span>
-                          ) : null}
                         </span>
                         <span className="text-muted-foreground text-xs">
                           {resolved.intervals
@@ -778,7 +824,7 @@ export function CalendarView() {
                     : undefined
                 }
               >
-                {/* Número del día + insignia "Cambio" si el turno viene de una excepción */}
+                {/* Número del día */}
                 <span className="flex items-center justify-between">
                   <span
                     className={cn(
@@ -790,11 +836,6 @@ export function CalendarView() {
                   >
                     {format(day, "d")}
                   </span>
-                  {resolved?.source === "override" ? (
-                    <span className="rounded bg-primary/10 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                      Cambio
-                    </span>
-                  ) : null}
                 </span>
 
                 {/* Día de vacaciones registrado (indicador de solo lectura) */}
@@ -940,6 +981,16 @@ export function CalendarView() {
           </Link>{" "}
           para verlo aquí.
         </p>
+      ) : null}
+
+      {/* Modal para aplicar patrón en una semana/fecha seleccionada */}
+      {patternToApply ? (
+        <ApplyPatternDialog
+          pattern={patternToApply}
+          defaultDate={view === "week" ? periodStartKey : undefined}
+          isOpen={Boolean(patternToApply)}
+          onClose={() => setPatternToApply(null)}
+        />
       ) : null}
     </div>
   );

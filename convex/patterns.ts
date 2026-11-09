@@ -395,8 +395,9 @@ export const create = mutation({
 });
 
 /**
- * Actualiza un patrón existente que aún no ha comenzado (preserva el histórico).
- * Rechaza con `CONFLICT` si `startDate <= hoy`, ya que reescribiría días ya resueltos.
+ * Actualiza un patrón existente.
+ * Permite rectificar la configuración, fechas y turnos del ciclo.
+ * Valida que no se solape con otro patrón activo del usuario.
  * Elimina los días existentes y los reinserta con la nueva definición del ciclo.
  */
 export const update = mutation({
@@ -415,24 +416,7 @@ export const update = mutation({
       });
     }
 
-    const timezone = await userTimezone(ctx, userId);
-    const today = todayInTimezone(timezone);
-    if (existing.startDate <= today) {
-      throw new ConvexError({
-        code: "CONFLICT",
-        message:
-          "Solo se pueden editar patrones que aún no han comenzado; crea uno nuevo para no reescribir el historial",
-      });
-    }
-
     const normalized = validatePattern(args);
-    if (normalized.startDate <= today) {
-      throw new ConvexError({
-        code: "CONFLICT",
-        message:
-          "La nueva fecha de inicio debe ser futura para no reescribir el historial",
-      });
-    }
     const days = await validateShiftOwnership(ctx, userId, args.days);
     await assertNoOverlap(
       ctx,
@@ -467,6 +451,34 @@ export const update = mutation({
         shiftTypeId: day.shiftTypeId,
       });
     }
+  },
+});
+
+/**
+ * Elimina un patrón por completo y sus días asociados.
+ * Útil para corregir patrones creados por error sin dejarlos archivados.
+ */
+export const remove = mutation({
+  args: { id: v.id("shiftPatterns") },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const existing = await ctx.db.get(args.id);
+    if (existing === null || existing.userId !== userId) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Patrón no encontrado",
+      });
+    }
+
+    const currentDays = await ctx.db
+      .query("patternDays")
+      .withIndex("by_pattern", (q) => q.eq("patternId", existing._id))
+      .collect();
+    for (const day of currentDays) {
+      await ctx.db.delete(day._id);
+    }
+
+    await ctx.db.delete(existing._id);
   },
 });
 

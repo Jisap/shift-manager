@@ -30,6 +30,7 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-09 18:03 | Antigravity (Gemini 3.8 Flash) | Rediseño de PatternsManager (previsualización cromática, UI, catálogo)| [sessions/2026-11-09-1803-antigravity.md](sessions/2026-11-09-1803-antigravity.md) |
 | 2026-11-09 18:12 | Antigravity (Gemini 3.8 Flash) | Optimización móvil de ShiftTypesManager y PatternsManager (orden/UI) | [sessions/2026-11-09-1812-antigravity.md](sessions/2026-11-09-1812-antigravity.md) |
 | 2026-11-09 18:24 | Antigravity (Gemini 3.8 Flash) | Vista compacta, buscador de turnos y combo box selector de patrones   | [sessions/2026-11-09-1824-antigravity.md](sessions/2026-11-09-1824-antigravity.md) |
+| 2026-11-09 18:46 | Antigravity (Gemini 3.8 Flash) | Habilitar edición de patrones iniciados y mutación remove para borrado| [sessions/2026-11-09-1846-antigravity.md](sessions/2026-11-09-1846-antigravity.md) |
 | 2026-11-06 13:40 | opencode (deepseek-v4.1-flash-free) | Pulido visual del Dashboard: tarjetas de métricas, próximos turnos y gráfico | [sessions/2026-11-06-1340-opencode.md](sessions/2026-11-06-1340-opencode.md) |
 | 2026-11-06 13:46 | opencode (deepseek-v4.1-flash-free) | Validación PWA sobre build de producción: manifest, SW, offline e iconos | [sessions/2026-11-06-1346-opencode.md](sessions/2026-11-06-1346-opencode.md) |
 | 2026-11-06 13:49 | opencode (deepseek-v4.1-flash-free) | Fase 9: indicadores de rendimiento del periodo en el Dashboard (97 tests) | [sessions/2026-11-06-1349-opencode.md](sessions/2026-11-06-1349-opencode.md) |
@@ -58,3 +59,5 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-08 17:02 | opencode (deepseek-v4.1-flash-free) | Perfil y configuración regional: nombre y zona horaria editables en `/settings` | [sessions/2026-11-08-1702-opencode.md](sessions/2026-11-08-1702-opencode.md) |
 | 2026-11-08 17:25 | opencode (deepseek-v4.1-flash-free) | Recuperación de contraseña por OTP con Resend y flujo en `/signin` | [sessions/2026-11-08-1725-opencode.md](sessions/2026-11-08-1725-opencode.md) |
 | 2026-11-09 16:41 | opencode (deepseek-v4.1-flash-free) | Verificación visual del modo oscuro y «Duplicar turno» con tests | [sessions/2026-11-09-1641-opencode.md](sessions/2026-11-09-1641-opencode.md) |
+| 2026-11-09 19:10 | Antigravity (Gemini 3.8 Flash) | Aplicar patrón a fecha/semana como excepciones (mutación + modal + UI)| [sessions/2026-11-09-1910-antigravity.md](sessions/2026-11-09-1910-antigravity.md) |
+| 2026-11-09 19:19 | Antigravity (Gemini 3.8 Flash) | Retirada de la etiqueta «Cambio» en celdas y agenda del calendario   | [sessions/2026-11-09-1919-antigravity.md](sessions/2026-11-09-1919-antigravity.md) |

@@ -12,13 +12,15 @@ import {
   Layers,
   Pencil,
   RotateCw,
+  Trash2,
   X,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import type { Id, Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,10 +38,10 @@ import {
   defaultPatternValues,
   nextMondayLocalDate,
   patternFormSchema,
-  todayLocalDate,
   WEEKLY_DAY_LABELS,
   type PatternFormValues,
 } from "@/lib/validators/pattern";
+import { ApplyPatternDialog } from "./ApplyPatternDialog";
 
 export function PatternsManager() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -49,6 +51,7 @@ export function PatternsManager() {
   const updatePattern = useMutation(api.patterns.update);
   const renamePattern = useMutation(api.patterns.rename);
   const archivePattern = useMutation(api.patterns.archive);
+  const removePattern = useMutation(api.patterns.remove);
 
   const [editingId, setEditingId] = useState<Id<"shiftPatterns"> | null>(null);
   const [renamingId, setRenamingId] = useState<Id<"shiftPatterns"> | null>(
@@ -59,6 +62,7 @@ export function PatternsManager() {
 
   // Selector de patrón activo para ver en detalle
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
+  const [patternToApply, setPatternToApply] = useState<Doc<"shiftPatterns"> | null>(null);
 
   const form = useForm<PatternFormValues>({
     resolver: zodResolver(patternFormSchema),
@@ -67,7 +71,6 @@ export function PatternsManager() {
   const type = useWatch({ control: form.control, name: "type" });
   const cycleLength = useWatch({ control: form.control, name: "cycleLength" });
   const days = useWatch({ control: form.control, name: "days" });
-  const today = todayLocalDate();
 
   const shiftsById = useMemo(
     () => new Map((shifts ?? []).map((shift) => [shift._id as string, shift])),
@@ -239,6 +242,24 @@ export function PatternsManager() {
       }
     } catch (caught) {
       setError(convexErrorMessage(caught, "No se pudo archivar el patrón."));
+    }
+  }
+
+  async function remove(id: Id<"shiftPatterns">) {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este patrón por completo?")) {
+      return;
+    }
+    setError(null);
+    try {
+      await removePattern({ id });
+      if (editingId === id) {
+        resetForm();
+      }
+      if (selectedPatternId === id) {
+        setSelectedPatternId(null);
+      }
+    } catch (caught) {
+      setError(convexErrorMessage(caught, "No se pudo eliminar el patrón."));
     }
   }
 
@@ -688,42 +709,62 @@ export function PatternsManager() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-end gap-1.5 border-t border-border/60 pt-2">
-                      {activePattern.startDate > today ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 px-2 text-xs"
-                          onClick={() => startEditing(activePattern)}
-                        >
-                          <Pencil className="size-3" />
-                          <span>Editar</span>
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 px-2 text-xs"
-                          onClick={() => {
-                            setRenamingId(activePattern._id);
-                            setRenameValue(activePattern.name);
-                          }}
-                        >
-                          <Pencil className="size-3" />
-                          <span>Renombrar</span>
-                        </Button>
-                      )}
+                    <div className="flex items-center justify-end gap-1.5 border-t border-border/60 pt-2 flex-wrap">
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        className="h-7 gap-1 px-2.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => setPatternToApply(activePattern)}
+                        title="Proyecta los turnos de este patrón a una semana o fecha concreta como excepciones"
+                      >
+                        <Sparkles className="size-3" />
+                        <span>Aplicar a fecha...</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs"
+                        onClick={() => startEditing(activePattern)}
+                      >
+                        <Pencil className="size-3" />
+                        <span>Editar</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs"
+                        onClick={() => {
+                          setRenamingId(activePattern._id);
+                          setRenameValue(activePattern.name);
+                        }}
+                      >
+                        <Pencil className="size-3" />
+                        <span>Renombrar</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => void archive(activePattern._id)}
+                        title="Archiva el patrón cerrándolo con fecha de finalización"
+                      >
+                        <Archive className="size-3" />
+                        <span>Archivar</span>
+                      </Button>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
-                        onClick={() => void archive(activePattern._id)}
+                        onClick={() => void remove(activePattern._id)}
+                        title="Elimina el patrón por completo si fue un error"
                       >
-                        <Archive className="size-3" />
-                        <span>Archivar</span>
+                        <Trash2 className="size-3" />
+                        <span>Eliminar</span>
                       </Button>
                     </div>
                   )}
@@ -778,6 +819,14 @@ export function PatternsManager() {
         <p className="text-muted-foreground text-xs leading-relaxed">
           💡 Para modificar un patrón ya iniciado, archívalo y crea uno nuevo con la fecha deseada. De este modo tus turnos pasados quedan perfectamente intactos en el historial.
         </p>
+
+        {patternToApply ? (
+          <ApplyPatternDialog
+            pattern={patternToApply}
+            isOpen={Boolean(patternToApply)}
+            onClose={() => setPatternToApply(null)}
+          />
+        ) : null}
       </div>
     </div>
   );
