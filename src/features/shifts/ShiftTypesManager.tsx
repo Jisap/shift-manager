@@ -8,13 +8,16 @@ import {
   Coffee,
   Copy,
   Layers,
+  LayoutGrid,
+  List,
   Pencil,
   Plus,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -58,6 +61,10 @@ export function ShiftTypesManager() {
   const [error, setError] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
 
+  // Estados de vista compacta/cuadrícula y búsqueda
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "compact">("compact");
+
   const form = useForm<ShiftTypeInput>({
     resolver: zodResolver(shiftTypeSchema),
     defaultValues: defaultShiftType,
@@ -67,6 +74,19 @@ export function ShiftTypesManager() {
 
   const currentColor = useWatch({ control: form.control, name: "color" });
   const isBreakPaid = useWatch({ control: form.control, name: "breakPaid" });
+
+  // Filtrado de turnos según término de búsqueda
+  const filteredShifts = useMemo(() => {
+    if (!shifts) return [];
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return shifts;
+    return shifts.filter(
+      (shift) =>
+        shift.name.toLowerCase().includes(query) ||
+        (shift.description && shift.description.toLowerCase().includes(query)) ||
+        shift.intervals.some((i) => i.start.includes(query) || i.end.includes(query))
+    );
+  }, [shifts, searchQuery]);
 
   if (isLoading) {
     return (
@@ -128,7 +148,6 @@ export function ShiftTypesManager() {
       breaks: shift.breaks ?? [],
       breakPaid: shift.breakPaid,
     });
-    // En móviles hacemos scroll suave hacia el formulario para editar
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       document.getElementById("shift-form-card")?.scrollIntoView({ behavior: "smooth" });
     }
@@ -433,7 +452,7 @@ export function ShiftTypesManager() {
 
       {/* Listado de turnos creados */}
       <div className="flex flex-col gap-4 order-1 lg:order-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold tracking-tight text-foreground">
               Catálogo de turnos
@@ -444,15 +463,41 @@ export function ShiftTypesManager() {
           </div>
           <div className="flex items-center gap-2">
             {shifts && shifts.length > 0 ? (
-              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-                {shifts.length} {shifts.length === 1 ? "turno" : "turnos"}
-              </span>
+              <div className="flex items-center rounded-lg border border-border/80 bg-muted/30 p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("compact")}
+                  title="Vista lista compacta"
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors",
+                    viewMode === "compact"
+                      ? "bg-background text-foreground shadow-2xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <List className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  title="Vista tarjetas"
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors",
+                    viewMode === "grid"
+                      ? "bg-background text-foreground shadow-2xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <LayoutGrid className="size-3.5" />
+                </button>
+              </div>
             ) : null}
+
             <Button
               asChild
               variant="outline"
               size="sm"
-              className="lg:hidden h-8 text-xs gap-1"
+              className="lg:hidden h-8 text-xs gap-1 shadow-2xs"
             >
               <a href="#shift-form-card">
                 <Plus className="size-3.5" />
@@ -461,6 +506,28 @@ export function ShiftTypesManager() {
             </Button>
           </div>
         </div>
+
+        {/* Buscador rápido si hay más de 3 turnos */}
+        {shifts && shifts.length > 3 ? (
+          <div className="relative">
+            <Search className="text-muted-foreground absolute left-3 top-2.5 size-3.5" />
+            <Input
+              placeholder="Buscar turno por nombre u horario..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 pl-8 text-xs rounded-xl bg-background/80"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         {listError ? (
           <p className="text-destructive text-sm" role="alert">
@@ -473,23 +540,92 @@ export function ShiftTypesManager() {
             <Clock className="size-4 animate-spin" />
             <span>Cargando turnos…</span>
           </div>
-        ) : shifts.length === 0 ? (
-          /* Estado vacío ilustrado */
-          <Card className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border-dashed">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3">
-              <Layers className="size-6" />
-            </div>
-            <CardTitle className="text-base font-semibold">
-              Todavía no has creado ningún turno
-            </CardTitle>
-            <CardDescription className="max-w-xs text-xs mt-1">
-              Usa el formulario lateral para definir tu primer turno de mañana, tarde, noche o partido.
-            </CardDescription>
-          </Card>
+        ) : filteredShifts.length === 0 ? (
+          searchQuery ? (
+            <p className="text-muted-foreground text-xs py-4 text-center">
+              No se encontraron turnos que coincidan con &quot;{searchQuery}&quot;.
+            </p>
+          ) : (
+            /* Estado vacío ilustrado */
+            <Card className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border-dashed">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3">
+                <Layers className="size-6" />
+              </div>
+              <CardTitle className="text-base font-semibold">
+                Todavía no has creado ningún turno
+              </CardTitle>
+              <CardDescription className="max-w-xs text-xs mt-1">
+                Usa el formulario lateral para definir tu primer turno de mañana, tarde, noche o partido.
+              </CardDescription>
+            </Card>
+          )
+        ) : viewMode === "compact" ? (
+          /* Vista lista compacta (ocupa poquísimo espacio vertical) */
+          <div className="flex flex-col divide-y divide-border/60 rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
+            {filteredShifts.map((shift) => (
+              <div
+                key={shift._id}
+                className={cn(
+                  "flex items-center justify-between p-3 transition-colors hover:bg-muted/30 gap-2",
+                  editingId === shift._id && "bg-primary/5"
+                )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span
+                    className="size-3 rounded-full shrink-0 shadow-2xs"
+                    style={{ backgroundColor: shift.color }}
+                    aria-hidden
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-semibold truncate text-foreground">
+                      {shift.name}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      {shift.intervals.map((i) => `${i.start}–${i.end}`).join(", ")}
+                      {shift.breakMinutes > 0 ? ` · ${shift.breakMinutes}m pausa` : ""}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => startEditing(shift)}
+                    title="Editar turno"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => void duplicate(shift._id)}
+                    title="Duplicar turno"
+                  >
+                    <Copy className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => void archive(shift._id)}
+                    title="Archivar turno"
+                  >
+                    <Archive className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           /* Cuadrícula moderna de turnos */
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {shifts.map((shift) => (
+            {filteredShifts.map((shift) => (
               <Card
                 key={shift._id}
                 className={cn(
@@ -498,7 +634,6 @@ export function ShiftTypesManager() {
                 )}
               >
                 <div>
-                  {/* Franja superior de color */}
                   <div
                     className="h-1.5 w-full"
                     style={{ backgroundColor: shift.color }}
@@ -524,7 +659,6 @@ export function ShiftTypesManager() {
                   </CardHeader>
 
                   <CardContent className="p-4 pt-1 flex flex-col gap-2">
-                    {/* Intervalos */}
                     <div className="flex flex-wrap gap-1 text-xs">
                       {shift.intervals.map((interval) => (
                         <span
@@ -536,7 +670,6 @@ export function ShiftTypesManager() {
                       ))}
                     </div>
 
-                    {/* Descansos */}
                     <p className="text-muted-foreground text-xs flex items-center gap-1.5">
                       <Coffee className="size-3 shrink-0" />
                       <span>
@@ -552,7 +685,6 @@ export function ShiftTypesManager() {
                   </CardContent>
                 </div>
 
-                {/* Acciones */}
                 <div className="flex items-center justify-end gap-1 border-t border-border/60 bg-muted/20 p-2 px-3">
                   <Button
                     type="button"
