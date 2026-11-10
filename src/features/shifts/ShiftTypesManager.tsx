@@ -60,6 +60,8 @@ export function ShiftTypesManager() {
   const [editingId, setEditingId] = useState<Id<"shiftTypes"> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  // Control de formulario visible en móvil
+  const [isFormOpenMobile, setIsFormOpenMobile] = useState(false);
 
   // Estados de vista compacta/cuadrícula y búsqueda
   const [searchQuery, setSearchQuery] = useState("");
@@ -132,6 +134,7 @@ export function ShiftTypesManager() {
       }
       form.reset(defaultShiftType);
       setEditingId(null);
+      setIsFormOpenMobile(false);
     } catch {
       setError("No se pudo guardar el turno. Revisa los datos.");
     }
@@ -139,6 +142,7 @@ export function ShiftTypesManager() {
 
   function startEditing(shift: NonNullable<typeof shifts>[number]) {
     setEditingId(shift._id);
+    setIsFormOpenMobile(true);
     setError(null);
     form.reset({
       name: shift.name,
@@ -173,10 +177,13 @@ export function ShiftTypesManager() {
 
   return (
     <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[24rem_1fr] lg:items-start">
-      {/* Formulario de creación / edición */}
+      {/* Formulario de creación / edición: en móvil solo se muestra si se solicita o edita */}
       <Card
         id="shift-form-card"
-        className="border-border/80 rounded-2xl shadow-2xs overflow-hidden lg:sticky lg:top-20 order-2 lg:order-1"
+        className={cn(
+          "border-border/80 rounded-2xl shadow-2xs overflow-hidden lg:sticky lg:top-20 order-2 lg:order-1 transition-all",
+          !isFormOpenMobile && !editingId && "hidden lg:block"
+        )}
       >
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2.5">
@@ -494,15 +501,34 @@ export function ShiftTypesManager() {
             ) : null}
 
             <Button
-              asChild
-              variant="outline"
+              type="button"
+              variant={isFormOpenMobile || editingId ? "secondary" : "default"}
               size="sm"
               className="lg:hidden h-8 text-xs gap-1 shadow-2xs"
+              onClick={() => {
+                if (isFormOpenMobile || editingId) {
+                  setIsFormOpenMobile(false);
+                  setEditingId(null);
+                  form.reset(defaultShiftType);
+                } else {
+                  setIsFormOpenMobile(true);
+                  setTimeout(() => {
+                    document.getElementById("shift-form-card")?.scrollIntoView({ behavior: "smooth" });
+                  }, 100);
+                }
+              }}
             >
-              <a href="#shift-form-card">
-                <Plus className="size-3.5" />
-                <span>Nuevo</span>
-              </a>
+              {isFormOpenMobile || editingId ? (
+                <>
+                  <X className="size-3.5" />
+                  <span>Cerrar</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="size-3.5" />
+                  <span>Nuevo</span>
+                </>
+              )}
             </Button>
           </div>
         </div>

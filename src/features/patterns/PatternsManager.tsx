@@ -63,6 +63,8 @@ export function PatternsManager() {
   // Selector de patrón activo para ver en detalle
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
   const [patternToApply, setPatternToApply] = useState<Doc<"shiftPatterns"> | null>(null);
+  // Control de formulario visible en móvil
+  const [isFormOpenMobile, setIsFormOpenMobile] = useState(false);
 
   const form = useForm<PatternFormValues>({
     resolver: zodResolver(patternFormSchema),
@@ -195,6 +197,7 @@ export function PatternsManager() {
       } else {
         await createPattern(payload);
       }
+      setIsFormOpenMobile(false);
       resetForm();
     } catch (caught) {
       setError(convexErrorMessage(caught, "No se pudo guardar el patrón."));
@@ -203,6 +206,7 @@ export function PatternsManager() {
 
   function startEditing(pattern: NonNullable<typeof patterns>[number]) {
     setEditingId(pattern._id);
+    setIsFormOpenMobile(true);
     setError(null);
     form.reset({
       name: pattern.name,
@@ -268,7 +272,10 @@ export function PatternsManager() {
       {/* Formulario lateral de configuración */}
       <Card
         id="pattern-form-card"
-        className="border-border/80 rounded-2xl shadow-2xs overflow-hidden lg:sticky lg:top-20 order-2 lg:order-1"
+        className={cn(
+          "border-border/80 rounded-2xl shadow-2xs overflow-hidden lg:sticky lg:top-20 order-2 lg:order-1 transition-all",
+          !isFormOpenMobile && !editingId && "hidden lg:block"
+        )}
       >
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2.5">
@@ -539,15 +546,33 @@ export function PatternsManager() {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              asChild
-              variant="outline"
+              type="button"
+              variant={isFormOpenMobile || editingId ? "secondary" : "default"}
               size="sm"
               className="lg:hidden h-8 text-xs gap-1"
+              onClick={() => {
+                if (isFormOpenMobile || editingId) {
+                  setIsFormOpenMobile(false);
+                  resetForm();
+                } else {
+                  setIsFormOpenMobile(true);
+                  setTimeout(() => {
+                    document.getElementById("pattern-form-card")?.scrollIntoView({ behavior: "smooth" });
+                  }, 100);
+                }
+              }}
             >
-              <a href="#pattern-form-card">
-                <RotateCw className="size-3.5" />
-                <span>Nuevo</span>
-              </a>
+              {isFormOpenMobile || editingId ? (
+                <>
+                  <X className="size-3.5" />
+                  <span>Cerrar</span>
+                </>
+              ) : (
+                <>
+                  <RotateCw className="size-3.5" />
+                  <span>Nuevo</span>
+                </>
+              )}
             </Button>
             <Button asChild variant="outline" size="sm" className="gap-1.5 shadow-2xs">
               <Link href="/calendar">

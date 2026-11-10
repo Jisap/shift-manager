@@ -43,6 +43,7 @@ import type { Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { ApplyPatternDialog } from "../patterns/ApplyPatternDialog";
 import { DayActionMenu } from "./DayActionMenu";
+import { DayQuickActionsSheet } from "./DayQuickActionsSheet";
 import {
   Card,
   CardContent,
@@ -259,6 +260,8 @@ export function CalendarView() {
   const [showPatternSelector, setShowPatternSelector] = useState(false);
   const [isClearingWeek, setIsClearingWeek] = useState(false);
   const [isSettingWeekRest, setIsSettingWeekRest] = useState(false);
+  // Estado para la hoja rápida móvil (bottom sheet)
+  const [quickActionDate, setQuickActionDate] = useState<string | null>(null);
 
   const clearRangeOverridesMutation = useMutation(api.overrides.clearRangeOverrides);
   const setRangeRestMutation = useMutation(api.overrides.setRangeRest);
@@ -425,168 +428,42 @@ export function CalendarView() {
     <div className="flex w-full flex-col gap-6">
       {/* ------------------------------------------------------------------
           Cabecera: vista, navegación del periodo y resumen de horas
+          Optimizada: En móvil es limpia, ordenada y no se come la pantalla
           ------------------------------------------------------------------ */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Selector de vista: Mes / Semana / Día / Agenda.
-              `role="group"` + `aria-label` lo anuncian como un conjunto de
-              botones con nombre; `aria-pressed` indica la vista activa. */}
-          <div
-            role="group"
-            aria-label="Vista del calendario"
-            className="bg-muted flex items-center gap-1 rounded-lg p-1"
-          >
-            <Button
-              type="button"
-              variant={view === "month" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={view === "month"}
-              onClick={() => changeView("month")}
-            >
-              Mes
-            </Button>
-            <Button
-              type="button"
-              variant={view === "week" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={view === "week"}
-              onClick={() => changeView("week")}
-            >
-              Semana
-            </Button>
-            <Button
-              type="button"
-              variant={view === "day" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={view === "day"}
-              onClick={() => changeView("day")}
-            >
-              Día
-            </Button>
-            <Button
-              type="button"
-              variant={view === "agenda" ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={view === "agenda"}
-              onClick={() => changeView("agenda")}
-            >
-              Agenda
-            </Button>
-          </div>
-
-          {/* Botón rápido para aplicar un patrón como turnos de esta semana */}
-          {patterns && patterns.length > 0 ? (
-            <div className="relative flex items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8 text-xs font-medium border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
-                onClick={() => setShowPatternSelector(!showPatternSelector)}
-                title="Aplica una secuencia de turnos de tus patrones a esta semana"
-              >
-                <Sparkles className="size-3.5" />
-                <span className="hidden xs:inline">Aplicar patrón</span>
-                <span className="xs:hidden">Patrón</span>
-              </Button>
-
-              {/* En vista Semana: botón para poner la semana en descanso si hay turnos */}
-              {view === "week" && hasShiftsInPeriod ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={isSettingWeekRest || isClearingWeek}
-                  className="gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={handleSetWeekRest}
-                  title="Establece los 7 días de esta semana como descanso"
-                >
-                  <RotateCcw className="size-3.5" />
-                  <span className="hidden sm:inline">
-                    {isSettingWeekRest ? "Vaciando..." : "Semana en descanso"}
-                  </span>
-                </Button>
-              ) : null}
-
-              {/* Si estamos en vista Semana y hay excepciones aplicadas, botón para restaurar */}
-              {view === "week" && hasOverridesInPeriod ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={isClearingWeek || isSettingWeekRest}
-                  className="gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={handleClearWeekOverrides}
-                  title="Elimina las excepciones aplicadas a los 7 días de esta semana y restaura el patrón"
-                >
-                  <RotateCcw className="size-3.5" />
-                  <span className="hidden sm:inline">
-                    {isClearingWeek ? "Restaurando..." : "Restaurar semana"}
-                  </span>
-                </Button>
-              ) : null}
-
-              {showPatternSelector ? (
-                <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-in fade-in-0 duration-150">
-                  <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground border-b border-border/50 mb-1">
-                    Selecciona patrón a aplicar:
-                  </div>
-                  <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                    {patterns.map((p) => (
-                      <button
-                        key={p._id}
-                        type="button"
-                        onClick={() => {
-                          setPatternToApply(p);
-                          setShowPatternSelector(false);
-                        }}
-                        className="flex items-center justify-between w-full px-2 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary text-left transition-colors"
-                      >
-                        <span className="truncate font-medium">{p.name}</span>
-                        <span className="text-[10px] text-muted-foreground ml-1 shrink-0">
-                          {p.cycleLength}d
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {/* Navegación: periodo anterior / título / periodo siguiente / hoy /
-              año. Con `flex-wrap` los controles bajan de línea en pantallas
-              estrechas. */}
-          <div
-            role="group"
-            aria-label="Navegación del periodo"
-            className="flex flex-wrap items-center gap-2"
-          >
+      <div className="flex flex-col gap-3">
+        {/* Fila 1 (Móvil y Desktop): Navegación del periodo */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Navegación central con fecha y hoy */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
               type="button"
               variant="outline"
               size="icon-sm"
               aria-label={PREVIOUS_LABEL[view]}
               onClick={() => moveCursor(-1)}
+              className="size-8"
             >
-              <ChevronLeft />
+              <ChevronLeft className="size-4" />
             </Button>
-            {/* `aria-live="polite"`: los lectores de pantalla anuncian el nuevo
-                periodo al navegar. El ancho mínimo es menor en móvil. */}
+
             <h2
               aria-live="polite"
-              className="min-w-32 text-center text-base font-semibold capitalize sm:min-w-48 sm:text-lg"
+              className="min-w-28 text-center text-sm font-semibold capitalize sm:min-w-44 sm:text-lg"
             >
               {periodTitle}
             </h2>
+
             <Button
               type="button"
               variant="outline"
               size="icon-sm"
               aria-label={NEXT_LABEL[view]}
               onClick={() => moveCursor(1)}
+              className="size-8"
             >
-              <ChevronRight />
+              <ChevronRight className="size-4" />
             </Button>
+
             <Button
               type="button"
               variant="ghost"
@@ -595,13 +472,13 @@ export function CalendarView() {
                 setSelectedDate(null);
                 setCursor(new Date());
               }}
+              className="h-8 px-2 text-xs font-medium"
             >
               Hoy
             </Button>
-            {/* Selector de año: salta al mismo día/mes del año elegido (si ese
-                día no existe, p. ej. 29/02, usa el último del mes). La etiqueta
-                es solo para lectores de pantalla (`sr-only`). */}
-            <div className="flex items-center gap-1">
+
+            {/* Selector de año compacto */}
+            <div className="flex items-center">
               <label htmlFor="calendar-year" className="sr-only">
                 Año
               </label>
@@ -612,9 +489,6 @@ export function CalendarView() {
                   const nextYear = Number(event.target.value);
                   setSelectedDate(null);
                   setCursor((current) => {
-                    // Se parte del día 1 para evitar que el 29 de febrero salte
-                    // a marzo al elegir un año no bisiesto; luego se restaura
-                    // el día original con tope en el último del mes.
                     const monthStart = setYear(startOfMonth(current), nextYear);
                     return setDate(
                       monthStart,
@@ -622,7 +496,7 @@ export function CalendarView() {
                     );
                   });
                 }}
-                className="border-border bg-background hover:bg-muted focus-visible:ring-ring/50 h-7 rounded-lg border px-2 text-sm font-medium transition focus-visible:ring-3 focus-visible:outline-none"
+                className="border-border bg-background hover:bg-muted focus-visible:ring-ring/50 h-8 rounded-lg border px-1.5 text-xs font-medium transition focus-visible:ring-2 focus-visible:outline-none"
               >
                 {yearOptions.map((year) => (
                   <option key={year} value={year}>
@@ -632,47 +506,178 @@ export function CalendarView() {
               </select>
             </div>
           </div>
-        </div>
-        {/* Resumen del periodo: horas previstas, reales (si hay) y festivos.
-            Alineado a la izquierda en móvil y a la derecha desde `sm`. */}
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          <div className="text-muted-foreground text-sm">
-            {calendar === undefined
-              ? "Calculando…"
-              : `${formatHours(periodMinutes)} previstas ${periodLabel}${
-                  periodActualMinutes > 0
-                    ? ` · ${formatHours(periodActualMinutes)} reales`
-                    : ""
-                } · ${periodHolidays} ${
-                  periodHolidays === 1 ? "festivo" : "festivos"
-                }`}
+
+          {/* Selector de vista: Mes / Semana / Día / Agenda */}
+          <div
+            role="group"
+            aria-label="Vista del calendario"
+            className="bg-muted/80 flex items-center gap-0.5 rounded-lg p-0.5"
+          >
+            <Button
+              type="button"
+              variant={view === "month" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              aria-pressed={view === "month"}
+              onClick={() => changeView("month")}
+            >
+              Mes
+            </Button>
+            <Button
+              type="button"
+              variant={view === "week" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              aria-pressed={view === "week"}
+              onClick={() => changeView("week")}
+            >
+              Semana
+            </Button>
+            <Button
+              type="button"
+              variant={view === "day" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              aria-pressed={view === "day"}
+              onClick={() => changeView("day")}
+            >
+              Día
+            </Button>
+            <Button
+              type="button"
+              variant={view === "agenda" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              aria-pressed={view === "agenda"}
+              onClick={() => changeView("agenda")}
+            >
+              Agenda
+            </Button>
           </div>
-          {/* Desglose por categoría; cada etiqueta solo aparece si tiene horas */}
-          {periodClassification.total > 0 ? (
-            <div className="flex flex-wrap justify-start gap-1.5 text-[11px] sm:justify-end">
-              {periodClassification.normal > 0 ? (
-                <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-medium">
-                  Normal {formatHours(periodClassification.normal)}
-                </span>
-              ) : null}
-              {periodClassification.extra > 0 ? (
-                <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-medium text-sky-700 dark:text-sky-300">
-                  Extra {formatHours(periodClassification.extra)}
-                </span>
-              ) : null}
-              {periodClassification.holiday > 0 ? (
-                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-medium text-amber-700 dark:text-amber-300">
-                  Festivo {formatHours(periodClassification.holiday)}
-                </span>
-              ) : null}
-              {periodClassification.holidayExtra > 0 ? (
-                <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-300">
-                  Festivo-extra {formatHours(periodClassification.holidayExtra)}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
         </div>
+
+        {/* Fila 2: Acciones contextuales de periodo y resumen de horas */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-2">
+          {/* Acciones de patrón o semana */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {patterns && patterns.length > 0 ? (
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-7 text-xs font-medium border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+                  onClick={() => setShowPatternSelector(!showPatternSelector)}
+                  title="Aplica una secuencia de turnos de tus patrones a esta semana"
+                >
+                  <Sparkles className="size-3" />
+                  <span>Aplicar patrón</span>
+                </Button>
+
+                {showPatternSelector ? (
+                  <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-in fade-in-0 duration-150">
+                    <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground border-b border-border/50 mb-1">
+                      Selecciona patrón a aplicar:
+                    </div>
+                    <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                      {patterns.map((p) => (
+                        <button
+                          key={p._id}
+                          type="button"
+                          onClick={() => {
+                            setPatternToApply(p);
+                            setShowPatternSelector(false);
+                          }}
+                          className="flex items-center justify-between w-full px-2 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary text-left transition-colors"
+                        >
+                          <span className="truncate font-medium">{p.name}</span>
+                          <span className="text-[10px] text-muted-foreground ml-1 shrink-0">
+                            {p.cycleLength}d
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {view === "week" && hasShiftsInPeriod ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isSettingWeekRest || isClearingWeek}
+                className="gap-1 h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleSetWeekRest}
+                title="Establece los 7 días de esta semana como descanso"
+              >
+                <RotateCcw className="size-3" />
+                <span>{isSettingWeekRest ? "Vaciando..." : "Semana en descanso"}</span>
+              </Button>
+            ) : null}
+
+            {view === "week" && hasOverridesInPeriod ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isClearingWeek || isSettingWeekRest}
+                className="gap-1 h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleClearWeekOverrides}
+                title="Elimina las excepciones aplicadas a los 7 días de esta semana y restaura el patrón"
+              >
+                <RotateCcw className="size-3" />
+                <span>{isClearingWeek ? "Restaurando..." : "Restaurar semana"}</span>
+              </Button>
+            ) : null}
+          </div>
+
+          {/* Resumen de horas del periodo */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {calendar === undefined ? (
+              <span>Calculando…</span>
+            ) : (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-medium text-foreground">
+                  {formatHours(periodMinutes)} previstas {periodLabel}
+                </span>
+                {periodActualMinutes > 0 ? (
+                  <span>· {formatHours(periodActualMinutes)} reales</span>
+                ) : null}
+                <span>
+                  · {periodHolidays} {periodHolidays === 1 ? "festivo" : "festivos"}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Desglose por categoría si hay horas */}
+        {periodClassification.total > 0 ? (
+          <div className="flex flex-wrap justify-start gap-1.5 text-[11px] sm:justify-end">
+            {periodClassification.normal > 0 ? (
+              <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-medium">
+                Normal {formatHours(periodClassification.normal)}
+              </span>
+            ) : null}
+            {periodClassification.extra > 0 ? (
+              <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-medium text-sky-700 dark:text-sky-300">
+                Extra {formatHours(periodClassification.extra)}
+              </span>
+            ) : null}
+            {periodClassification.holiday > 0 ? (
+              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-medium text-amber-700 dark:text-amber-300">
+                Festivo {formatHours(periodClassification.holiday)}
+              </span>
+            ) : null}
+            {periodClassification.holidayExtra > 0 ? (
+              <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-700 dark:text-violet-300">
+                Festivo-extra {formatHours(periodClassification.holidayExtra)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {/* ------------------------------------------------------------------
@@ -890,11 +895,22 @@ export function CalendarView() {
                 aria-pressed={selectedDate === dateKey}
                 aria-current={dateKey === todayKey ? "date" : undefined}
                 aria-label={accessibleLabel}
-                onClick={() => setSelectedDate(dateKey)}
+                onClick={() => {
+                  // En móvil (pantallas pequeñas), abrir la hoja táctil inferior (bottom sheet)
+                  if (typeof window !== "undefined" && window.innerWidth < 640) {
+                    setQuickActionDate(dateKey);
+                  } else {
+                    setSelectedDate(dateKey);
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    setSelectedDate(dateKey);
+                    if (typeof window !== "undefined" && window.innerWidth < 640) {
+                      setQuickActionDate(dateKey);
+                    } else {
+                      setSelectedDate(dateKey);
+                    }
                   }
                 }}
                 className={cn(
@@ -935,7 +951,7 @@ export function CalendarView() {
                     {format(day, "d")}
                   </span>
 
-                  {/* Menú de acciones rápidas (3 puntos): visible en hover en desktop, o siempre en vista semana/día */}
+                  {/* Menú de acciones rápidas (3 puntos): solo en desktop (en móvil se usa el Bottom Sheet nativo) */}
                   <DayActionMenu
                     date={dateKey}
                     hasOverride={overridesByDate.has(dateKey)}
@@ -943,7 +959,7 @@ export function CalendarView() {
                     shifts={shifts ?? []}
                     onOpenEditor={() => setSelectedDate(dateKey)}
                     className={cn(
-                      "transition-opacity duration-150",
+                      "hidden sm:flex transition-opacity duration-150",
                       view === "month"
                         ? "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                         : "opacity-80 hover:opacity-100"
@@ -1103,6 +1119,30 @@ export function CalendarView() {
           defaultDate={view === "week" ? periodStartKey : undefined}
           isOpen={Boolean(patternToApply)}
           onClose={() => setPatternToApply(null)}
+        />
+      ) : null}
+
+      {/* Hoja inferior táctil (Bottom Sheet) para móvil al pulsar cualquier día */}
+      {quickActionDate ? (
+        <DayQuickActionsSheet
+          date={quickActionDate}
+          onClose={() => setQuickActionDate(null)}
+          onOpenFullEditor={() => {
+            setSelectedDate(quickActionDate);
+            setQuickActionDate(null);
+          }}
+          shifts={shifts ?? []}
+          currentShift={
+            daysByDate.get(quickActionDate)?.shiftTypeId !== undefined
+              ? shiftsById.get(daysByDate.get(quickActionDate)!.shiftTypeId!)
+              : undefined
+          }
+          hasOverride={overridesByDate.has(quickActionDate)}
+          overrideId={overridesByDate.get(quickActionDate)?._id}
+          plannedMinutes={daysByDate.get(quickActionDate)?.plannedMinutes ?? 0}
+          isRest={daysByDate.get(quickActionDate)?.kind === "rest"}
+          isHoliday={holidaysByDate.has(quickActionDate)}
+          holidayNames={(holidaysByDate.get(quickActionDate) ?? []).map((h) => h.name)}
         />
       ) : null}
     </div>
