@@ -92,7 +92,7 @@ export function DayEditorSheet({
   ];
 
   return (
-    <div className="relative mb-6 overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm">
+    <div className="relative mb-6 overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm animate-in fade-in-0 slide-in-from-bottom-3 duration-200">
       {/* Cabecera del panel */}
       <div className="flex items-center justify-between border-b border-border/60 bg-muted/40 px-4 py-3 sm:px-6">
         <div>

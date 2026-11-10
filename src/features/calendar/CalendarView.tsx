@@ -575,7 +575,7 @@ export function CalendarView() {
                 </Button>
 
                 {showPatternSelector ? (
-                  <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-in fade-in-0 duration-150">
+                  <div className="absolute left-0 top-full mt-1.5 z-30 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 duration-150">
                     <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground border-b border-border/50 mb-1">
                       Selecciona patrón a aplicar:
                     </div>

@@ -181,7 +181,7 @@ export function ShiftTypesManager() {
       <Card
         id="shift-form-card"
         className={cn(
-          "border-border/80 rounded-2xl shadow-2xs overflow-hidden lg:sticky lg:top-20 order-2 lg:order-1 transition-all",
+          "border-border/80 rounded-2xl shadow-2xs overflow-hidden lg:sticky lg:top-20 order-2 lg:order-1 transition-all animate-in fade-in-0 slide-in-from-bottom-4 duration-200",
           !isFormOpenMobile && !editingId && "hidden lg:block"
         )}
       >
