@@ -841,10 +841,6 @@ export function PatternsManager() {
           </div>
         )}
 
-        <p className="text-muted-foreground text-xs leading-relaxed">
-          💡 Para modificar un patrón ya iniciado, archívalo y crea uno nuevo con la fecha deseada. De este modo tus turnos pasados quedan perfectamente intactos en el historial.
-        </p>
-
         {patternToApply ? (
           <ApplyPatternDialog
             pattern={patternToApply}

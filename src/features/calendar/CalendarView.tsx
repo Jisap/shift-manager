@@ -1071,45 +1071,50 @@ export function CalendarView() {
       )}
 
       {/* ------------------------------------------------------------------
-          Leyenda: ayuda de uso + colores de turnos y tipos de hora
+          Leyenda: colores de turnos y tipos de hora.
+          En móvil (< sm) se oculta: el Bottom Sheet ya guía al usuario.
+          En desktop se muestra como grid de 2 columnas para mayor legibilidad.
           ------------------------------------------------------------------ */}
-      <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
-        <span>
+      <div className="hidden sm:block">
+        {/* Texto de ayuda — solo desktop */}
+        <p className="text-muted-foreground mb-2 text-xs">
           Pulsa un día para editar excepciones, horas reales, extra o festivos.
-        </span>
-        {/* Un punto de color por cada tipo de turno */}
-        {(shifts ?? []).map((shift) => (
-          <span key={shift._id} className="flex items-center gap-1">
+        </p>
+        <div className="text-muted-foreground grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+          {/* Un punto de color por cada tipo de turno */}
+          {(shifts ?? []).map((shift) => (
+            <span key={shift._id} className="flex items-center gap-1.5">
+              <span
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: shift.color }}
+                aria-hidden
+              />
+              {shift.name}
+            </span>
+          ))}
+          <span className="flex items-center gap-1.5">
             <span
-              className="size-2.5 rounded-full"
-              style={{ backgroundColor: shift.color }}
+              className="border-muted-foreground/40 size-2.5 shrink-0 rounded-full border"
               aria-hidden
             />
-            {shift.name}
+            Descanso
           </span>
-        ))}
-        <span className="flex items-center gap-1">
-          <span
-            className="border-muted-foreground/40 size-2.5 rounded-full border"
-            aria-hidden
-          />
-          Descanso
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="size-2.5 rounded-full bg-amber-500/60" aria-hidden />
-          Festivo
-        </span>
-        <span className="flex items-center gap-1">
-          <span
-            className="size-2.5 rounded-full bg-emerald-500/60"
-            aria-hidden
-          />
-          Horas reales
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="size-2.5 rounded-full bg-sky-500/60" aria-hidden />
-          Horas extra
-        </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 shrink-0 rounded-full bg-amber-500/60" aria-hidden />
+            Festivo
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span
+              className="size-2.5 shrink-0 rounded-full bg-emerald-500/60"
+              aria-hidden
+            />
+            Horas reales
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 shrink-0 rounded-full bg-sky-500/60" aria-hidden />
+            Horas extra
+          </span>
+        </div>
       </div>
 
       {/* Estado vacío: no hay tipos de turno o todo el rango son descansos.
