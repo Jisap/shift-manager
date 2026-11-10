@@ -277,6 +277,29 @@ export function PatternsManager() {
           !isFormOpenMobile && !editingId && "hidden lg:block"
         )}
       >
+        {/* Barra de contexto sticky en móvil: informa al usuario del modo activo */}
+        <div className="bg-muted/60 border-b border-border/60 flex items-center justify-between gap-3 px-4 py-2.5 lg:hidden">
+          <div className="flex items-center gap-2">
+            <div className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <RotateCw className="size-3.5" />
+            </div>
+            <span className="text-sm font-semibold text-foreground">
+              {editingId ? "Editar patrón" : "Nuevo patrón de turnos"}
+            </span>
+          </div>
+          <button
+            type="button"
+            aria-label="Cerrar formulario"
+            onClick={() => {
+              setIsFormOpenMobile(false);
+              resetForm();
+            }}
+            className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary shadow-xs">

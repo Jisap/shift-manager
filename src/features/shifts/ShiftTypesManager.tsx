@@ -185,6 +185,33 @@ export function ShiftTypesManager() {
           !isFormOpenMobile && !editingId && "hidden lg:block"
         )}
       >
+        {/* Barra de contexto sticky en móvil: informa al usuario del modo activo */}
+        <div className="bg-muted/60 border-b border-border/60 flex items-center justify-between gap-3 px-4 py-2.5 lg:hidden">
+          <div className="flex items-center gap-2">
+            <div
+              className="flex size-6 items-center justify-center rounded-md text-white"
+              style={{ backgroundColor: currentColor || "#4f46e5" }}
+            >
+              <Clock className="size-3.5" />
+            </div>
+            <span className="text-sm font-semibold text-foreground">
+              {editingId ? "Editar turno" : "Nuevo tipo de turno"}
+            </span>
+          </div>
+          <button
+            type="button"
+            aria-label="Cerrar formulario"
+            onClick={() => {
+              setIsFormOpenMobile(false);
+              setEditingId(null);
+              form.reset(defaultShiftType);
+            }}
+            className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2.5">
             <div

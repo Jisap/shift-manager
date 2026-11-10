@@ -35,7 +35,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, RotateCcw, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Moon, RotateCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
@@ -810,7 +810,8 @@ export function CalendarView() {
                         </span>
                       </>
                     ) : (
-                      <span className="text-muted-foreground text-sm">
+                      <span className="flex items-center gap-1.5 text-muted-foreground text-sm">
+                        <Moon className="size-3.5 shrink-0 text-sky-400/70" aria-hidden />
                         Descanso
                       </span>
                     )}
@@ -1052,7 +1053,8 @@ export function CalendarView() {
                     </span>
                   </span>
                 ) : (
-                  <span className="text-muted-foreground text-xs truncate">
+                  <span className="flex items-center gap-1 text-muted-foreground text-xs truncate">
+                    <Moon className="size-3 shrink-0 text-sky-400/70 hidden sm:block" aria-hidden />
                     <span className="sm:hidden">Libre</span>
                     <span className="hidden sm:inline">Descanso</span>
                   </span>
@@ -1097,7 +1099,8 @@ export function CalendarView() {
               className="border-muted-foreground/40 size-2.5 shrink-0 rounded-full border"
               aria-hidden
             />
-            Descanso
+            <span className="sm:hidden">Libre</span>
+            <span className="hidden sm:inline">Descanso</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="size-2.5 shrink-0 rounded-full bg-amber-500/60" aria-hidden />
