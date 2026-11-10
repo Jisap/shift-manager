@@ -138,11 +138,11 @@ function CalendarMockup() {
               <>
                 <span
                   className="rounded px-1 text-[10px] font-semibold"
-                  style={{ color, backgroundColor: `${color}25` }}
+                  style={{ color: color ?? undefined, backgroundColor: `${color}25` }}
                 >
                   {shift === "M" ? "Mañana" : shift === "T" ? "Tarde" : "Noche"}
                 </span>
-                <span className="mt-0.5 text-[9px]" style={{ color: color ?? "#888" }}>
+                <span className="mt-0.5 text-[9px]" style={{ color: color ?? undefined }}>
                   {shift === "M" ? "07:00–15:00" : shift === "T" ? "15:00–23:00" : "23:00–07:00"}
                 </span>
               </>
