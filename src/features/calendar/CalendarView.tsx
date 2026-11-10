@@ -974,18 +974,30 @@ export function CalendarView() {
                   </span>
                 ) : null}
 
-                {/* Etiquetas de festivo (puede haber varias) */}
+                {/* Etiquetas de festivo (puede haber varias).
+                    En móvil con vista mensual (celdas muy estrechas): solo el
+                    primer festivo truncado a 1 línea + contador si hay más.
+                    En desktop o vista semanal/diaria: todos los festivos visibles. */}
                 {dayHolidays.length > 0 ? (
-                  <span className="flex flex-wrap gap-1">
-                    {dayHolidays.map((holiday) => (
-                      <span
-                        key={holiday._id}
-                        className="rounded bg-amber-500/15 px-1 text-[10px] font-medium text-amber-700 dark:text-amber-300"
-                      >
-                        {holiday.name}
+                  view === "month" ? (
+                    <span className="flex flex-col gap-0.5 min-w-0 w-full">
+                      <span className="rounded bg-amber-500/15 px-1 text-[10px] font-medium text-amber-700 dark:text-amber-300 truncate block">
+                        {dayHolidays[0].name}
+                        {dayHolidays.length > 1 ? ` +${dayHolidays.length - 1}` : ""}
                       </span>
-                    ))}
-                  </span>
+                    </span>
+                  ) : (
+                    <span className="flex flex-col gap-0.5 min-w-0 w-full">
+                      {dayHolidays.map((holiday) => (
+                        <span
+                          key={holiday._id}
+                          className="rounded bg-amber-500/15 px-1 text-[10px] font-medium text-amber-700 dark:text-amber-300 truncate block"
+                        >
+                          {holiday.name}
+                        </span>
+                      ))}
+                    </span>
+                  )
                 ) : null}
 
                 {/* Horas reales trabajadas */}
@@ -1040,8 +1052,9 @@ export function CalendarView() {
                     </span>
                   </span>
                 ) : (
-                  <span className="text-muted-foreground text-xs">
-                    Descanso
+                  <span className="text-muted-foreground text-xs truncate">
+                    <span className="sm:hidden">Libre</span>
+                    <span className="hidden sm:inline">Descanso</span>
                   </span>
                 )}
 
