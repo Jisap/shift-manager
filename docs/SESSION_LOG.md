@@ -69,3 +69,5 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-09 20:15 | Antigravity (Gemini 3.8 Flash) | Corrección de anidamiento button/button e hidratación en celdas     | [sessions/2026-11-09-2015-antigravity.md](sessions/2026-11-09-2015-antigravity.md) |
 | 2026-11-10 18:29 | Antigravity (Gemini 3.8 Flash) | Rediseño UI/UX Mobile-First (Cabecera limpia, Bottom Sheet táctil)   | [sessions/2026-11-10-1829-antigravity.md](sessions/2026-11-10-1829-antigravity.md) |
 | 2026-11-10 18:43 | Antigravity (Gemini 3.8 Flash) | «Libre» en móvil para Descanso; festivos truncados en cuadrícula mensual | [sessions/2026-11-10-1843-antigravity.md](sessions/2026-11-10-1843-antigravity.md) |
+| 2026-11-11 16:30 | opencode (deepseek-v4.1-flash-free) | Diagnóstico de retorno: verificación completa e inventario de pendientes | [sessions/2026-11-11-1630-opencode.md](sessions/2026-11-11-1630-opencode.md) |
+| 2026-11-11 16:45 | opencode (deepseek-v4.1-flash-free) | Reconstrucción del registro del 2026-11-10 (landing, móvil y animaciones) | [sessions/2026-11-11-1645-opencode.md](sessions/2026-11-11-1645-opencode.md) |

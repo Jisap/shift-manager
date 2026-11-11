@@ -6,7 +6,11 @@ Sustituye calendarios improvisados y hojas de cálculo por una vista clara del h
 
 ## Estado
 
-**Fases 1–7 completadas; Fase 8 y Fase 9 parcialmente completadas.** Calendario, horas, estadísticas y exportación funcionando, con PWA instalable, Service Worker y página offline. Autenticación completa (registro, sesión y recuperación por OTP), perfil con zona horaria, modo oscuro, vacaciones, festivos manuales y recordatorios. CI preparado con GitHub Actions, pendiente de subir por permisos del token. Pendientes: optimización de rendimiento, importación de festivos y algunos tests de backend. La especificación está cerrada en `shiftManager.md` (v1.7).
+**Fases 1–7 y 10 completadas; Fases 8 y 9 parcialmente completadas.** Calendario, horas, estadísticas y exportación funcionando, con PWA instalable, Service Worker y página offline. Autenticación completa (registro, sesión y recuperación por OTP), perfil con zona horaria, modo oscuro, vacaciones, festivos manuales y recordatorios.
+
+El 2026-11-10 se completó el rediseño mobile-first de la interfaz y la portada (hero a dos columnas, mockup de calendario, rejilla de funcionalidades y CTA dinámico), además de animaciones de entrada en formularios, paneles y menús.
+
+La CI está versionada en `.github/workflows/ci.yml` (typecheck, lint y Vitest); queda confirmar su primera ejecución y añadir Playwright. Pendientes: importación de festivos, ampliación de tests de backend y E2E. La especificación está cerrada en `shiftManager.md` (v1.7).
 
 ## Documentación
 

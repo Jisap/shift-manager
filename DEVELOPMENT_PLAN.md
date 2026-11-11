@@ -23,7 +23,7 @@ Tareas:
 - [x] Configurar ESLint y Prettier. Husky y lint-staged pendientes (requieren git).
 - [x] Configurar Vitest y Playwright.
 - [x] Definir scripts `dev`, `lint`, `typecheck`, `test`, `test:e2e` y documentarlos en `AGENTS.md`.
-- [ ] CI de GitHub Actions con typecheck, lint y tests: workflow preparado en `.github/workflows/ci.yml`, pendiente de subir porque el token guardado no tiene el scope `workflow`.
+- [ ] CI de GitHub Actions con typecheck, lint y tests: workflow versionado en `.github/workflows/ci.yml`; pendiente confirmar su primera ejecución y añadir Playwright (§5.19).
 
 Aceptación:
 
@@ -116,6 +116,20 @@ Aceptación: instalable y sin fugas de datos por caché.
 - [x] Modo oscuro con `next-themes`.
 - [ ] Importación de calendarios de festivos.
 - [ ] Verificación de email en el registro (opcional, fuera del MVP).
+
+## Fase 10 — Rediseño visual y pulido UX (post-MVP)
+
+Estado: **completada** (2026-11-10).
+
+- [x] Rediseño mobile-first de cabecera, Bottom Sheet y celdas del calendario.
+- [x] Leyenda del calendario oculta en móvil y en rejilla de 2 columnas en escritorio.
+- [x] Banner sticky de contexto en los formularios móviles de turnos y patrones.
+- [x] Icono de luna en descansos y etiqueta «Libre» en móvil / «Descanso» en escritorio.
+- [x] Rediseño de la portada: hero a 2 columnas, mockup de calendario, rejilla de 6 funcionalidades, badges y CTA dinámico según sesión.
+- [x] Animaciones de entrada (fade/slide/zoom) en formularios, paneles y menús.
+- [x] Verificación: `typecheck`, `lint`, 150 tests y build de producción correctos (2026-11-11).
+
+Aceptación: interfaz coherente en móvil y escritorio, portada renovada y animaciones sin dependencias nuevas.
 
 ## Puertas de calidad
 
