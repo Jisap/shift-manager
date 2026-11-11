@@ -73,3 +73,4 @@ Antes de empezar, todo agente debe leer la última entrada y el archivo de sesi�
 | 2026-11-11 16:45 | opencode (deepseek-v4.1-flash-free) | Reconstrucción del registro del 2026-11-10 (landing, móvil y animaciones) | [sessions/2026-11-11-1645-opencode.md](sessions/2026-11-11-1645-opencode.md) |
 | 2026-11-11 17:07 | opencode (deepseek-v4.1-flash-free) | Suite E2E ampliada a 26 pruebas: patrones, calendario, horas y vacaciones | [sessions/2026-11-11-1707-opencode.md](sessions/2026-11-11-1707-opencode.md) |
 | 2026-11-11 18:22 | Antigravity (Gemini 3.8 Flash) | Transición suave entre páginas con template.tsx (fade-in 200ms)          | [sessions/2026-11-11-1822-antigravity.md](sessions/2026-11-11-1822-antigravity.md) |
+| 2026-11-11 18:49 | Antigravity (Gemini 3.8 Flash) | Skeletons shadcn en Dashboard y Calendario (componentes + loading.tsx)  | [sessions/2026-11-11-1849-antigravity.md](sessions/2026-11-11-1849-antigravity.md) |
