@@ -73,6 +73,7 @@ import {
 } from "@/lib/calculations/statistics";
 import { formatHours } from "@/lib/calculations/overtime";
 import { daysBetweenLocal, isValidLocalDate } from "@/lib/dates/local-date";
+import { DashboardSkeleton } from "./DashboardSkeleton";
 import { buildExportData } from "@/lib/export/export-data";
 import { cn } from "@/lib/utils";
 import { ExportButtons } from "./export/ExportButtons";
@@ -389,8 +390,8 @@ export function DashboardView() {
   // Estados tempranos: cargando y sin sesión
   // --------------------------------------------------------------------------
 
-  if (isLoading) {
-    return <p className="text-muted-foreground text-sm">Cargando…</p>;
+  if (isLoading || (isAuthenticated && (calendar === undefined || upcoming === undefined))) {
+    return <DashboardSkeleton />;
   }
 
   if (!isAuthenticated) {

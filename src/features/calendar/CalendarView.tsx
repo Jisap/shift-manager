@@ -42,6 +42,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { ApplyPatternDialog } from "../patterns/ApplyPatternDialog";
+import { CalendarSkeleton } from "./CalendarSkeleton";
 import { DayActionMenu } from "./DayActionMenu";
 import { DayQuickActionsSheet } from "./DayQuickActionsSheet";
 import {
@@ -402,8 +403,8 @@ export function CalendarView() {
   // Estados tempranos: cargando y sin sesión
   // --------------------------------------------------------------------------
 
-  if (isLoading) {
-    return <p className="text-muted-foreground text-sm">Cargando…</p>;
+  if (isLoading || (isAuthenticated && calendar === undefined)) {
+    return <CalendarSkeleton />;
   }
 
   if (!isAuthenticated) {
