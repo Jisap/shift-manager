@@ -8,10 +8,12 @@
 
 import { expect, test } from "@playwright/test";
 import { signUpNewUser } from "./helpers/auth";
+import { ensureFormOpen } from "./helpers/flows";
 
 test("crea y duplica un turno", async ({ page }) => {
   await signUpNewUser(page);
   await page.goto("/shifts");
+  await ensureFormOpen(page);
 
   // Alta del turno original.
   await page.getByLabel("Nombre").fill("Mañana");
@@ -36,6 +38,7 @@ test("crea y duplica un turno", async ({ page }) => {
 test("edita y archiva un turno", async ({ page }) => {
   await signUpNewUser(page);
   await page.goto("/shifts");
+  await ensureFormOpen(page);
 
   // Alta del turno que se va a editar.
   await page.getByLabel("Nombre").fill("Tarde");

@@ -131,6 +131,20 @@ Estado: **completada** (2026-11-10).
 
 Aceptación: interfaz coherente en móvil y escritorio, portada renovada y animaciones sin dependencias nuevas.
 
+## Fase 11 — Cobertura E2E ampliada
+
+Estado: **completada** (2026-11-11).
+
+- [x] Helpers compartidos en `e2e/helpers/flows.ts` (apertura de formularios en móvil, creación de turnos y patrones, acceso a la agenda y al editor de día).
+- [x] Patrones en `e2e/patterns.spec.ts`: semanal aplicado al calendario y ciclo rotativo persistente.
+- [x] Calendario en `e2e/calendar.spec.ts`: excepción de turno con restauración y alta/baja de festivos.
+- [x] Horas en `e2e/time-entries.spec.ts`: fichaje con pausa, persistencia, horas extra e indicadores de la agenda.
+- [x] Vacaciones en `e2e/vacations.spec.ts`: saldo anual, alta con nota, totales y eliminación.
+- [x] Suite completa en verde: 26 pruebas (13 casos × chromium y mobile).
+- [ ] Integrar Playwright en la CI (pendiente de §5.19).
+
+Aceptación: los flujos principales se validan de extremo a extremo tanto en escritorio como en móvil.
+
 ## Puertas de calidad
 
 Una tarea está terminada cuando:

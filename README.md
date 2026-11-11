@@ -10,7 +10,7 @@ Sustituye calendarios improvisados y hojas de cálculo por una vista clara del h
 
 El 2026-11-10 se completó el rediseño mobile-first de la interfaz y la portada (hero a dos columnas, mockup de calendario, rejilla de funcionalidades y CTA dinámico), además de animaciones de entrada en formularios, paneles y menús.
 
-La CI está versionada en `.github/workflows/ci.yml` (typecheck, lint y Vitest); queda confirmar su primera ejecución y añadir Playwright. Pendientes: importación de festivos, ampliación de tests de backend y E2E. La especificación está cerrada en `shiftManager.md` (v1.7).
+La CI está versionada en `.github/workflows/ci.yml` (typecheck, lint y Vitest); queda confirmar su primera ejecución y añadir Playwright. La suite E2E cubre 26 pruebas en escritorio y móvil: autenticación, exportación CSV/PDF, turnos, patrones, excepciones de calendario, festivos, horas reales con extras y vacaciones (2026-11-11). Pendientes: importación de festivos y tests de seguridad de backend. La especificación está cerrada en `shiftManager.md` (v1.7).
 
 ## Documentación
 
