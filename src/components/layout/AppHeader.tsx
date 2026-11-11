@@ -142,7 +142,7 @@ export function AppHeader() {
 
       {/* Menú desplegable móvil: solo si hay sesión */}
       {mobileMenuOpen && showNavLinks ? (
-        <div className="border-border bg-background border-b px-4 py-3 md:hidden">
+        <div className="border-border bg-background border-b px-4 py-3 md:hidden animate-in fade-in-0 slide-in-from-top-2 duration-150">
           <nav className="flex flex-col gap-1" aria-label="Navegación móvil">
             {NAV_LINKS.map(({ href, label, icon: Icon }) => {
               const isActive =
