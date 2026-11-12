@@ -76,7 +76,7 @@ describe("buildExportData", () => {
     expect(data.summary.plannedMinutes).toBe(480);
     expect(data.summary.actualMinutes).toBe(450);
     expect(data.summary.overtimeMinutes).toBe(30);
-    expect(data.summary.differenceMinutes).toBe(-30);
+    expect(data.summary.differenceMinutes).toBe(0);
     expect(data.summary.normalMinutes).toBe(420);
     expect(data.summary.extraMinutes).toBe(30);
     expect(data.summary.vacationDays).toBe(1);
@@ -140,10 +140,12 @@ describe("buildCsv", () => {
 
     const lines = csv.slice(1).split("\r\n");
     expect(lines[0]).toBe(
-      "Fecha,Día,Turno,Horario,Horas previstas,Horas reales,Diferencia,Horas extra,Categoría,Festivo,Jornada extra,Vacaciones",
+      "Fecha,Día,Turno,Horario,Horas previstas,Horas reales,Exceso,Categoría,Festivo,Jornada extra,Vacaciones",
     );
     expect(lines[1]).toContain("2026-11-02");
     expect(lines[1]).toContain("Mañana");
+    // La columna Exceso equivale a las horas extra sobre el turno.
+    expect(lines[1].split(",")[6]).toBe("0.50");
     expect(lines[2]).toContain("Vacaciones");
     expect(lines[3]).toContain("Total");
     expect(lines[3]).toContain("8.00");

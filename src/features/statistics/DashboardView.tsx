@@ -32,12 +32,9 @@ import {
   Coffee,
   Flame,
   Gauge,
-  Minus,
   Palmtree,
   PartyPopper,
   Timer,
-  TrendingDown,
-  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -157,14 +154,6 @@ function bucketLabel(key: string, size: StatisticsBucketSize): string {
   return format(parseISO(key), "d MMM", { locale: es });
 }
 
-/** Diferencia en minutos con signo explícito: "+2 h", "−1 h" o "0 h". */
-function formatDifference(minutes: number): string {
-  if (minutes === 0) {
-    return "0 h";
-  }
-  return `${minutes > 0 ? "+" : "−"}${formatHours(Math.abs(minutes))}`;
-}
-
 /** Porcentaje con un decimal, o "—" cuando no hay datos suficientes. */
 function formatPercent(value: number | null): string {
   if (value === null) {
@@ -241,6 +230,12 @@ export function DashboardView() {
   // estables (el objeto `range` se recrea en cada render).
   const { start: rangeStart, end: rangeEnd } = range;
   const rangeValid = isValidRange(range);
+  // El dashboard solo resume lo ya transcurrido: si el periodo termina en el
+  // futuro, los totales se cortan en hoy para no contar trabajo que aún no se
+  // ha hecho. El rango original se conserva para la consulta y el filtro.
+  const statsEnd =
+    rangeEnd > today && rangeStart <= today ? today : rangeEnd;
+  const isPartialPeriod = statsEnd !== rangeEnd;
   // Si el rango no es válido se salta la consulta ("skip") para no pedir
   // datos de un periodo incorrecto o demasiado grande.
   const queryArgs = rangeValid
@@ -318,6 +313,16 @@ export function DashboardView() {
     [shifts],
   );
 
+  // Días ya transcurridos dentro del periodo consultado. Es la base de todos
+  // los totales: ni las horas previstas ni las reales incluyen días futuros.
+  const elapsedDays = useMemo(
+    () =>
+      calendar === undefined
+        ? []
+        : calendar.days.filter((day) => day.date <= today),
+    [calendar, today],
+  );
+
   // Resumen del periodo. Mientras el calendario carga se devuelve uno vacío;
   // si no, `buildStatistics` combina días, registros de horas, festivos y
   // días extra (excepciones de tipo "extra") y clasifica las horas.
@@ -326,7 +331,7 @@ export function DashboardView() {
       return emptyStatisticsSummary();
     }
     return buildStatistics({
-      days: calendar.days,
+      days: elapsedDays,
       timeEntries: timeEntries ?? [],
       holidayDates: new Set((holidays ?? []).map((holiday) => holiday.date)),
       extraDates: new Set(
@@ -338,7 +343,7 @@ export function DashboardView() {
         (vacations ?? []).map((vacation) => vacation.date),
       ),
     });
-  }, [calendar, timeEntries, holidays, overrides, vacations]);
+  }, [calendar, elapsedDays, timeEntries, holidays, overrides, vacations]);
 
   // Indicadores derivados de los totales del periodo (cumplimiento, medias y
   // peso de las horas extra). La función es pura y no vuelve a calcular horas.
@@ -359,15 +364,16 @@ export function DashboardView() {
       ? undefined
       : buildExportData({
           startDate: rangeStart,
-          endDate: rangeEnd,
+          endDate: statsEnd,
           timezone: calendar.timezone,
-          days: calendar.days,
+          days: elapsedDays,
           statistics: summary,
           shiftNames,
         });
 
-  // Granularidad del gráfico (día, semana o mes) según la longitud del rango.
-  const bucketSize = statisticsBucketSize(rangeStart, rangeEnd);
+  // Granularidad del gráfico (día, semana o mes) según la longitud del rango
+  // ya transcurrido.
+  const bucketSize = statisticsBucketSize(rangeStart, statsEnd);
   // Datos de Recharts: minutos pasados a horas con un decimal.
   const chartData = bucketStatistics(summary.days, bucketSize).map(
     (bucket) => ({
@@ -579,12 +585,15 @@ export function DashboardView() {
 
         {/* El rango solo se formatea si es válido: con una fecha vacía
             `parseISO` devuelve una fecha inválida y `format` lanzaría un
-            RangeError. Con rango inválido se muestra el aviso de más abajo. */}
+            RangeError. Con rango inválido se muestra el aviso de más abajo.
+            Si el periodo llega al futuro, el texto indica que los totales se
+            cortan en hoy. */}
         {rangeValid ? (
           <p className="border-border/60 bg-card text-muted-foreground rounded-full border px-3 py-1 text-xs font-medium">
             {format(parseISO(rangeStart), "d MMM yyyy", { locale: es })}
             {" – "}
-            {format(parseISO(rangeEnd), "d MMM yyyy", { locale: es })}
+            {format(parseISO(statsEnd), "d MMM yyyy", { locale: es })}
+            {isPartialPeriod ? " · hasta hoy" : ""}
           </p>
         ) : null}
 
@@ -620,35 +629,10 @@ export function DashboardView() {
               icon={Timer}
               iconClassName="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
             />
-            {/* La diferencia se colorea: verde si se trabajó de más, rojo si
-                de menos y neutro si coincide con lo previsto */}
+            {/* Exceso: horas extra registradas sobre los turnos. Es un dato
+                siempre positivo; no representa trabajo pendiente. */}
             <SummaryCard
-              label="Diferencia"
-              value={formatDifference(summary.differenceMinutes)}
-              icon={
-                summary.differenceMinutes === 0
-                  ? Minus
-                  : summary.differenceMinutes > 0
-                    ? TrendingUp
-                    : TrendingDown
-              }
-              iconClassName={
-                summary.differenceMinutes === 0
-                  ? "bg-muted text-muted-foreground"
-                  : summary.differenceMinutes > 0
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-              }
-              tone={
-                summary.differenceMinutes === 0
-                  ? "neutral"
-                  : summary.differenceMinutes > 0
-                    ? "positive"
-                    : "negative"
-              }
-            />
-            <SummaryCard
-              label="Horas extra"
+              label="Exceso"
               value={formatHours(summary.overtimeMinutes)}
               icon={Flame}
               iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
@@ -797,7 +781,7 @@ export function DashboardView() {
             <CardHeader className="border-border/60 border-b pb-4">
               <CardTitle>Previstas frente a reales</CardTitle>
               <CardDescription>
-                Horas agrupadas por{" "}
+                Horas de los días transcurridos, agrupadas por{" "}
                 {bucketSize === "day"
                   ? "día"
                   : bucketSize === "week"

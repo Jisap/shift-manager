@@ -25,7 +25,6 @@ const COLORS = {
   border: "#cbd5e1",
   background: "#f1f5f9",
   positive: "#047857",
-  negative: "#be123c",
 };
 
 const styles = StyleSheet.create({
@@ -104,9 +103,8 @@ const styles = StyleSheet.create({
   cellIntervals: { width: "19%" },
   cellNumber: { width: "8%", textAlign: "right" },
   cellCategory: { width: "18%" },
-  // Colores de la diferencia entre horas reales y previstas.
+  // Color del exceso sobre lo previsto (nunca se muestra en negativo).
   positive: { color: COLORS.positive },
-  negative: { color: COLORS.negative },
   // Pie de página fijo, repetido en todas las páginas.
   footer: {
     position: "absolute",
@@ -122,29 +120,6 @@ const styles = StyleSheet.create({
 /** Minutos con el mismo formato que el resto de la app: "2 h 30 min". */
 function hours(minutes: number): string {
   return formatHours(minutes);
-}
-
-/** Igual que `hours`, pero con signo explícito: "+2 h", "−1 h 30 min" o "0 h". */
-function signedHours(minutes: number): string {
-  if (minutes === 0) {
-    return "0 h";
-  }
-  const sign = minutes > 0 ? "+" : "−";
-  return `${sign}${formatHours(Math.abs(minutes))}`;
-}
-
-/**
- * Estilo de color para una diferencia: verde si es positiva, rojo si es
- * negativa y sin estilo (color por defecto) si es cero.
- */
-function differenceStyle(minutes: number) {
-  if (minutes > 0) {
-    return styles.positive;
-  }
-  if (minutes < 0) {
-    return styles.negative;
-  }
-  return undefined;
 }
 
 /** Fecha larga legible a partir de "yyyy-MM-dd". */
@@ -175,7 +150,7 @@ export function CalendarPdfDocument({ data }: { data: ExportData }) {
         {/* Resumen del periodo: tres filas de cuatro celdas con los totales */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Resumen del periodo</Text>
-          {/* Fila 1: previstas, reales, diferencia (coloreada) y extra */}
+          {/* Fila 1: previstas, reales y exceso (horas extra sobre el turno) */}
           <View style={styles.summaryRow}>
             <View style={styles.summaryCell}>
               <Text style={styles.summaryLabel}>Horas previstas</Text>
@@ -190,19 +165,13 @@ export function CalendarPdfDocument({ data }: { data: ExportData }) {
               </Text>
             </View>
             <View style={styles.summaryCell}>
-              <Text style={styles.summaryLabel}>Diferencia</Text>
+              <Text style={styles.summaryLabel}>Exceso</Text>
               <Text
                 style={[
                   styles.summaryValue,
-                  differenceStyle(summary.differenceMinutes),
+                  summary.overtimeMinutes > 0 ? styles.positive : undefined,
                 ]}
               >
-                {signedHours(summary.differenceMinutes)}
-              </Text>
-            </View>
-            <View style={styles.summaryCell}>
-              <Text style={styles.summaryLabel}>Horas extra</Text>
-              <Text style={styles.summaryValue}>
                 {hours(summary.overtimeMinutes)}
               </Text>
             </View>
@@ -266,7 +235,7 @@ export function CalendarPdfDocument({ data }: { data: ExportData }) {
             </Text>
             <Text style={[styles.tableCell, styles.cellNumber]}>Prev.</Text>
             <Text style={[styles.tableCell, styles.cellNumber]}>Real</Text>
-            <Text style={[styles.tableCell, styles.cellNumber]}>Dif.</Text>
+            <Text style={[styles.tableCell, styles.cellNumber]}>Exc.</Text>
             <Text style={[styles.tableCell, styles.cellCategory]}>
               Categoría
             </Text>
@@ -296,10 +265,10 @@ export function CalendarPdfDocument({ data }: { data: ExportData }) {
                 style={[
                   styles.tableCell,
                   styles.cellNumber,
-                  differenceStyle(row.differenceMinutes),
+                  row.overtimeMinutes > 0 ? styles.positive : undefined,
                 ]}
               >
-                {signedHours(row.differenceMinutes)}
+                {hours(row.overtimeMinutes)}
               </Text>
               <Text style={[styles.tableCell, styles.cellCategory]}>
                 {row.category}
