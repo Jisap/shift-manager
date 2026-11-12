@@ -477,3 +477,211 @@ export const removeOvertime = mutation({
     });
   },
 });
+
+/**
+ * Guarda o actualiza de manera unificada la jornada completa de un día:
+ * - Tipo de jornada/excepción (turno específico o descanso)
+ * - Fichaje real: confirmación de la jornada prevista o tramo horario manual
+ * - Horas extraordinarias directas en minutos
+ * - Nota opcional
+ */
+export const saveDayRecord = mutation({
+  args: {
+    date: v.string(),
+    // Estado del turno: "shift" con shiftTypeId, "rest", o undefined si conserva el previsto
+    overrideKind: v.optional(v.union(v.literal("shift"), v.literal("rest"))),
+    shiftTypeId: v.optional(v.id("shiftTypes")),
+    // Fichaje real: confirmación del previsto o personalizado
+    worked: v.boolean(), // ¿Se trabajó este día?
+    confirmPlanned: v.optional(v.boolean()), // Si es true, toma los tramos y descansos del turno
+    customStart: v.optional(v.string()),
+    customEnd: v.optional(v.string()),
+    customBreakMinutes: v.optional(v.number()),
+    // Horas extraordinarias realizadas (en minutos)
+    overtimeMinutes: v.optional(v.number()),
+    // Festivo
+    isHoliday: v.optional(v.boolean()),
+    holidayName: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    if (!isValidLocalDate(args.date)) {
+      throw new ConvexError({
+        code: "VALIDATION_ERROR",
+        message: "La fecha no es válida",
+      });
+    }
+
+    const timezone = await userTimezone(ctx, userId);
+
+    // 1. GESTIÓN DEL TURNO / EXCEPCIÓN
+    // Buscamos si ya existe un override para este día
+    const existingOverride = await ctx.db
+      .query("scheduleOverrides")
+      .withIndex("by_user_date", (q) =>
+        q.eq("userId", userId).eq("date", args.date),
+      )
+      .unique();
+
+    if (args.overrideKind === "rest") {
+      if (existingOverride !== null) {
+        await ctx.db.patch(existingOverride._id, {
+          kind: "rest",
+          shiftTypeId: undefined,
+          intervals: undefined,
+          updatedAt: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("scheduleOverrides", {
+          userId,
+          date: args.date,
+          kind: "rest",
+          updatedAt: Date.now(),
+        });
+      }
+    } else if (args.overrideKind === "shift" && args.shiftTypeId !== undefined) {
+      const shift = await ctx.db.get(args.shiftTypeId);
+      if (shift === null || shift.userId !== userId) {
+        throw new ConvexError({
+          code: "NOT_FOUND",
+          message: "Tipo de turno no encontrado",
+        });
+      }
+      if (existingOverride !== null) {
+        await ctx.db.patch(existingOverride._id, {
+          kind: "shift",
+          shiftTypeId: args.shiftTypeId,
+          intervals: shift.intervals,
+          updatedAt: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("scheduleOverrides", {
+          userId,
+          date: args.date,
+          kind: "shift",
+          shiftTypeId: args.shiftTypeId,
+          intervals: shift.intervals,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    // 2. GESTIÓN DEL FICHAJE REAL Y HORAS EXTRA
+    const existingEntry = await ctx.db
+      .query("timeEntries")
+      .withIndex("by_user_date", (q) =>
+        q.eq("userId", userId).eq("date", args.date),
+      )
+      .unique();
+
+    let actualStart: number | undefined;
+    let actualEnd: number | undefined;
+    let intervals: { start: number; end: number }[] | undefined;
+    let breakMinutes = 0;
+    let expectedMinutes: number | undefined;
+
+    if (args.worked) {
+      if (args.confirmPlanned && args.shiftTypeId) {
+        const shift = await ctx.db.get(args.shiftTypeId);
+        if (shift && shift.intervals.length > 0) {
+          const shiftIntervals = intervalsToInstants(
+            args.date,
+            shift.intervals,
+            timezone,
+          );
+          if (shiftIntervals.length > 0) {
+            actualStart = shiftIntervals[0].start;
+            actualEnd = shiftIntervals[shiftIntervals.length - 1].end;
+            intervals = shiftIntervals;
+            breakMinutes = shift.breakMinutes;
+            const gross = Math.round(
+              (actualEnd - actualStart) / MILLISECONDS_PER_MINUTE,
+            );
+            expectedMinutes = Math.max(0, gross - breakMinutes);
+          }
+        }
+      } else if (args.customStart && args.customEnd) {
+        if (!isValidLocalTime(args.customStart) || !isValidLocalTime(args.customEnd)) {
+          throw new ConvexError({
+            code: "VALIDATION_ERROR",
+            message: "Las horas deben usar el formato HH:mm",
+          });
+        }
+        const [instants] = intervalsToInstants(
+          args.date,
+          [{ start: args.customStart, end: args.customEnd }],
+          timezone,
+        );
+        if (instants) {
+          actualStart = instants.start;
+          actualEnd = instants.end;
+          intervals = [instants];
+          breakMinutes = args.customBreakMinutes ?? 0;
+          const gross = Math.round(
+            (actualEnd - actualStart) / MILLISECONDS_PER_MINUTE,
+          );
+          expectedMinutes = Math.max(0, gross - breakMinutes);
+        }
+      }
+    }
+
+    const validatedOvertime =
+      args.overtimeMinutes && args.overtimeMinutes > 0
+        ? Math.min(args.overtimeMinutes, MAX_OVERTIME_MINUTES)
+        : undefined;
+
+    const validatedNotes = validateNotes(args.notes);
+
+    // Si no trabajó ni tiene horas extra ni notas, y existía timeEntry, se borra
+    if (!args.worked && !validatedOvertime && !validatedNotes) {
+      if (existingEntry !== null) {
+        await ctx.db.delete(existingEntry._id);
+      }
+    } else {
+      const payload = {
+        actualStart,
+        actualEnd,
+        intervals,
+        breakMinutes,
+        expectedMinutes,
+        overtimeMinutes: validatedOvertime,
+        notes: validatedNotes,
+        updatedAt: Date.now(),
+      };
+
+      if (existingEntry !== null) {
+        await ctx.db.patch(existingEntry._id, payload);
+      } else {
+        await ctx.db.insert("timeEntries", {
+          userId,
+          date: args.date,
+          ...payload,
+        });
+      }
+    }
+
+    // 3. GESTIÓN DE FESTIVOS (opcional en el registro)
+    if (args.isHoliday !== undefined) {
+      const existingHolidays = await ctx.db
+        .query("holidays")
+        .withIndex("by_user_date", (q) =>
+          q.eq("userId", userId).eq("date", args.date),
+        )
+        .collect();
+
+      if (args.isHoliday && existingHolidays.length === 0) {
+        await ctx.db.insert("holidays", {
+          userId,
+          date: args.date,
+          name: args.holidayName?.trim() || "Festivo",
+          scope: "personal",
+        });
+      } else if (!args.isHoliday && existingHolidays.length > 0) {
+        for (const holiday of existingHolidays) {
+          await ctx.db.delete(holiday._id);
+        }
+      }
+    }
+  },
+});

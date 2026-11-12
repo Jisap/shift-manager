@@ -107,7 +107,7 @@ describe("buildStatistics", () => {
     expect(summary.plannedMinutes).toBe(960);
     expect(summary.actualMinutes).toBe(930);
     expect(summary.overtimeMinutes).toBe(180);
-    expect(summary.differenceMinutes).toBe(-30);
+    expect(summary.differenceMinutes).toBe(150);
     expect(summary.shiftDays).toBe(2);
     expect(summary.restDays).toBe(2);
     expect(summary.holidayDays).toBe(1);

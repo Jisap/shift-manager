@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Clock, DollarSign, PartyPopper, X } from "lucide-react";
+import { Calendar, Clock, DollarSign, PartyPopper, Sparkles, X } from "lucide-react";
 import type { Id, Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { DayActualEditor } from "./DayActualEditor";
 import { DayHolidayEditor } from "./DayHolidayEditor";
 import { DayOvertimeEditor } from "./DayOvertimeEditor";
 import { DayOverrideEditor } from "./DayOverrideEditor";
+import { DayUnifiedEditor } from "./DayUnifiedEditor";
 
 type Interval = { start: string; end: string };
 
@@ -42,12 +43,12 @@ type DayEditorSheetProps = {
   selectedHolidays: Doc<"holidays">[];
 };
 
-type TabType = "override" | "actual" | "overtime" | "holidays";
+type TabType = "unified" | "override" | "actual" | "overtime" | "holidays";
 
 /**
- * Panel lateral (Sheet) que organiza la edición del día en pestañas ordenadas,
- * evitando que 4 formularios masivos ocupen y desplacen la pantalla del calendario.
- * No altera ninguna llamada a Convex ni modifica la lógica de negocio.
+ * Panel lateral (Sheet) que organiza la edición del día:
+ * Por defecto ofrece el nuevo modo unificado (rápido y directo en 1 paso),
+ * manteniendo las pestañas avanzadas para usuarios que deseen control granular de intervalos.
  */
 export function DayEditorSheet({
   date,
@@ -62,18 +63,24 @@ export function DayEditorSheet({
   selectedShift,
   selectedHolidays,
 }: DayEditorSheetProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("override");
+  const [activeTab, setActiveTab] = useState<TabType>("unified");
 
   const tabs = [
     {
+      id: "unified" as const,
+      label: "Rápido (Unificado)",
+      icon: Sparkles,
+      activeDot: false,
+    },
+    {
       id: "override" as const,
-      label: "Turno / Excepción",
+      label: "Turno",
       icon: Calendar,
       activeDot: Boolean(selectedOverride),
     },
     {
       id: "actual" as const,
-      label: "Fichaje real",
+      label: "Fichaje manual",
       icon: Clock,
       activeDot: selectedOvertime?.actualStart !== undefined,
     },
@@ -148,6 +155,23 @@ export function DayEditorSheet({
 
       {/* Contenedor del formulario activo */}
       <div className="p-4 sm:p-6">
+        {activeTab === "unified" && (
+          <DayUnifiedEditor
+            key={`${date}-unified`}
+            date={date}
+            onClose={onClose}
+            shifts={shifts}
+            selectedOverride={selectedOverride}
+            timezone={timezone}
+            plannedMinutes={plannedMinutes}
+            shiftTypeId={shiftTypeId}
+            shiftIntervals={shiftIntervals}
+            selectedOvertime={selectedOvertime}
+            selectedShift={selectedShift}
+            selectedHolidays={selectedHolidays}
+          />
+        )}
+
         {activeTab === "override" && (
           <DayOverrideEditor
             key={`${date}-${selectedOverride?._id ?? "new"}`}

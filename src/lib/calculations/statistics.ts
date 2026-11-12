@@ -56,6 +56,7 @@ export interface StatisticsSummary {
   plannedMinutes: number;
   actualMinutes: number;
   overtimeMinutes: number;
+  /** Diferencia con signo (real + extra − previsto). Uso interno/exportación. */
   differenceMinutes: number;
   classified: ClassifiedMinutes;
   shiftDays: number;
@@ -133,7 +134,7 @@ export function buildStatistics(input: StatisticsInput): StatisticsSummary {
       plannedMinutes: day.plannedMinutes,
       actualMinutes,
       overtimeMinutes,
-      differenceMinutes: actualMinutes - day.plannedMinutes,
+      differenceMinutes: actualMinutes + overtimeMinutes - day.plannedMinutes,
       isHoliday,
       isExtraDay,
       isVacation,
@@ -154,12 +155,13 @@ export function buildStatistics(input: StatisticsInput): StatisticsSummary {
     (total, day) => total + day.overtimeMinutes,
     0,
   );
+  const differenceMinutes = actualMinutes + overtimeMinutes - plannedMinutes;
 
   return {
     plannedMinutes,
     actualMinutes,
     overtimeMinutes,
-    differenceMinutes: actualMinutes - plannedMinutes,
+    differenceMinutes,
     classified: sumClassifiedMinutes(days.map((day) => day)),
     shiftDays: days.filter((day) => day.isShift).length,
     restDays: days.filter((day) => !day.isShift).length,
